@@ -1482,7 +1482,7 @@ pfUI.api.PLAYER_BUFF_NOT_FOUND = pfUI.expansion == "vanilla" and -1 or 0
 -- Example of usage:
 --
 --     for i=1,32,1 do
---         local buffIndex, untilCancelled = GetPlayerBuffX(i, "HELPFUL")
+--         local buffIndex, untilCancelled = pfUI.api.GetPlayerBuffX(i, "HELPFUL")
 --         if buffIndex == pfUI.api.PLAYER_BUFF_NOT_FOUND then
 --             [...handle buff not found...]
 --         else

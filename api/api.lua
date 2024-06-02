@@ -1487,6 +1487,8 @@ pfUI.api.PLAYER_BUFF_NOT_FOUND = pfUI.expansion == "vanilla" and -1 or 0
 --             [...handle buff not found...]
 --         else
 --             [...handle buff found...]
+--
+--             local buffTexture = GetPlayerBuffTexture(buffIndex) -- this simply works properly on both vanilla in tbc
 --         end
 --     end
 --

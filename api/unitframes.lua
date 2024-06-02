@@ -27,9 +27,16 @@ local glow2 = {
 
 local maxdurations = {}
 local function BuffOnUpdate()
-  if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + .2 end
-  local timeleft = GetPlayerBuffTimeLeft(pfUI.api.GetPlayerBuffX(this.id,"HELPFUL"))
-  local texture = GetPlayerBuffTexture(pfUI.api.GetPlayerBuffX(this.id,"HELPFUL"))
+  local now = GetTime()
+  if (this.tick or 1) > now then
+    return
+  end
+
+  this.tick = now + .2
+  
+  local bid = pfUI.api.GetPlayerBuffX(this.id,"HELPFUL")
+  local timeleft = GetPlayerBuffTimeLeft(bid)
+  local texture = GetPlayerBuffTexture(bid)
   local start = 0
 
   if timeleft > 0 then
@@ -38,7 +45,8 @@ local function BuffOnUpdate()
     elseif maxdurations[texture] and maxdurations[texture] < timeleft then
       maxdurations[texture] = timeleft
     end
-    start = GetTime() + timeleft - maxdurations[texture]
+
+    start = now + timeleft - maxdurations[texture]
   end
 
   CooldownFrame_SetTimer(this.cd, start, maxdurations[texture], timeleft > 0 and 1 or 0)
@@ -113,9 +121,15 @@ local function BuffOnClick()
 end
 
 local function DebuffOnUpdate()
-  if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + .2 end
-  local timeleft = GetPlayerBuffTimeLeft(pfUI.api.GetPlayerBuffX(this.id,"HARMFUL"))
-  local texture = GetPlayerBuffTexture(pfUI.api.GetPlayerBuffX(this.id,"HARMFUL"))
+  local now = GetTime()
+  if (this.tick or 1) > now then
+    return
+  end
+
+  this.tick = now + .2
+  local bid = pfUI.api.GetPlayerBuffX(this.id,"HARMFUL")
+  local timeleft = GetPlayerBuffTimeLeft(bid)
+  local texture = GetPlayerBuffTexture(bid)
   local start = 0
 
   if timeleft > 0 then
@@ -124,7 +138,8 @@ local function DebuffOnUpdate()
     elseif maxdurations[texture] and maxdurations[texture] < timeleft then
       maxdurations[texture] = timeleft
     end
-    start = GetTime() + timeleft - maxdurations[texture]
+
+    start = now + timeleft - maxdurations[texture]
   end
 
   CooldownFrame_SetTimer(this.cd, start, maxdurations[texture], timeleft > 0 and 1 or 0)
@@ -1474,14 +1489,15 @@ function pfUI.uf:RefreshUnit(unit, component)
 
   -- Buffs
   if unit.buffs and ( component == "all" or component == "aura" ) then
-    local texture, stacks
+    local texture, stacks, bid
 
     for i=1, unit.config.bufflimit do
       if not unit.buffs[i] then break end
 
       if unit.label == "player" then
-        stacks = GetPlayerBuffApplications(pfUI.api.GetPlayerBuffX(i,"HELPFUL"))
-        texture = GetPlayerBuffTexture(pfUI.api.GetPlayerBuffX(i,"HELPFUL"))
+        bid = pfUI.api.GetPlayerBuffX(i,"HELPFUL")
+        stacks = GetPlayerBuffApplications(bid)
+        texture = GetPlayerBuffTexture(bid)
       else
         texture, stacks = pfUI.uf:DetectBuff(unitstr, i)
       end
@@ -1540,10 +1556,11 @@ function pfUI.uf:RefreshUnit(unit, component)
       reposition = true
     end
 
+    local row, bid
     for i=1, unit.config.debufflimit do
       if not unit.debuffs[i] then break end
 
-      local row = floor((i-1) / unit.config.debuffperrow)
+      row = floor((i-1) / unit.config.debuffperrow)
 
       if reposition then
         unit.debuffs[i]:SetPoint(af, unit, unit.config.debuffs,
@@ -1552,9 +1569,10 @@ function pfUI.uf:RefreshUnit(unit, component)
       end
 
       if unit.label == "player" then
-        texture = GetPlayerBuffTexture(pfUI.api.GetPlayerBuffX(i, "HARMFUL"))
-        stacks = GetPlayerBuffApplications(pfUI.api.GetPlayerBuffX(i, "HARMFUL"))
-        dtype = GetPlayerBuffDispelType(pfUI.api.GetPlayerBuffX(i, "HARMFUL"))
+        bid = pfUI.api.GetPlayerBuffX(i, "HARMFUL")
+        texture = GetPlayerBuffTexture(bid)
+        stacks = GetPlayerBuffApplications(bid)
+        dtype = GetPlayerBuffDispelType(bid)
       else
         texture, stacks, dtype = UnitDebuff(unitstr, i)
       end

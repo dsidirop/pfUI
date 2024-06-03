@@ -398,8 +398,8 @@ hooksecurefunc("CastSpell", function(id, bookType)
   end
 end, true)
 
-hooksecurefunc("CastSpellByName", function(spell, target)
-  local spellName, rank, texture, _, _, _, cachedId = libspell.GetSpellInfo(spell)
+hooksecurefunc("CastSpellByName", function(spellCasted, target)
+  local spellName, rank, texture, _, _, _, cachedId = libspell.GetSpellInfo(spellCasted)
   if not spellName or not cachedId then return end -- ignore if the spell is not found
 
   lastrank = rank
@@ -408,7 +408,7 @@ hooksecurefunc("CastSpellByName", function(spell, target)
   for i=1,120 do
     -- detect if any cast is ongoing
     if IsCurrentAction(i) then
-      CastCustom(spell)
+      CastCustom(spellCasted)
       return
     end
   end

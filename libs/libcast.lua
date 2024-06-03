@@ -389,8 +389,8 @@ hooksecurefunc("UseContainerItem", function(id, index)
 end)
 
 hooksecurefunc("CastSpell", function(id, bookType)
-  local spellName, rank, texture, _, _, _, actualId = libspell.GetSpellInfo(id, bookType)
-  if not spellName or not actualId then return end -- ignore if the spell is not found
+  local spellName, rank, texture, _, _, _, cachedId = libspell.GetSpellInfo(id, bookType)
+  if not spellName or not cachedId then return end -- ignore if the spell is not found
 
   lastrank = rank
   lastcasttex = texture

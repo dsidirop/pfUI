@@ -389,11 +389,13 @@ hooksecurefunc("UseContainerItem", function(id, index)
 end)
 
 hooksecurefunc("CastSpell", function(id, bookType)
-  _, lastrank = libspell.GetSpellInfo(id, bookType)
-  lastcasttex = GetSpellTexture(id, bookType)
+  local spellName, rank, texture, _, _, _, cachedId = libspell.GetSpellInfo(id, bookType)
+  if not spellName or cachedId ~= id then return end -- ignore if the spell is not found
+
+  lastrank = rank
+  lastcasttex = texture
 
   if GetSpellCooldown(id, bookType) ~= 0 then
-    local spellName = GetSpellName(id, bookType)
     CastCustom(spellName)
   end
 end, true)

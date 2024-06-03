@@ -390,13 +390,13 @@ end)
 
 hooksecurefunc("CastSpell", function(id, bookType)
   local spellName, rank, texture, _, _, _, cachedId = libspell.GetSpellInfo(id, bookType)
-  if not spellName or cachedId ~= id then return end -- ignore if the spell is not found
+  if not spellName or not cachedId then return end -- ignore if the spell is not found
 
   lastrank = rank
   lastcasttex = texture
 
   if GetSpellCooldown(id, bookType) ~= 0 then
-    CastCustom(spellName)
+    CastCustom(spellName) 
   end
 end, true)
 

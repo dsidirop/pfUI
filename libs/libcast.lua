@@ -373,18 +373,26 @@ libcast.customcast[strlower(multishot)] = function(begin, duration)
   end
 end
 
+local lastRawSpellName, lastfunc
+local function GetCustomCastFunc(spellName)
+  -- to ultra-optimize cases in which paladins spam 'flash of light' all the time   this allows us to skip strlower + table lookup completely
+  if rawequal(lastRawSpellName, rawSpellName) then return lastfunc end
+
+  lastRawSpellName = rawSpellName
+  
+  return libcast.customcast[strlower(spellName)]  
+end
+
 local function CastCustom(id, bookType, rawSpellName, rank, texture, castingTime)
   if not id or not rawSpellName or not castingTime then return end -- ignore if the spell is not found or if it is instant-cast
 
   lastrank = rank
   lastcasttex = texture
 
-  local func = libcast.customcast[strlower(rawSpellName)]
-  if not func then return end
+  lastfunc = GetCustomCastFunc(rawSpellName)
+  if not lastfunc or GetSpellCooldown(id, bookType) == 0 or UnitCastingInfo(player) then return end -- detect casting
 
-  if GetSpellCooldown(id, bookType) == 0 or UnitCastingInfo(player) then return end -- detect casting
-
-  func(true)
+  lastfunc(true)
 end
 
 hooksecurefunc("UseContainerItem", function(id, index)

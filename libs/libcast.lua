@@ -418,7 +418,7 @@ hooksecurefunc("UseAction", function(slot, target, button)
   local rawSpellName, rank = scanner:Line(1)
   if not rawSpellName then return end -- ignore if the spell is not found
 
-  local cachedRawSpellName, cachedRank, cachedTexture, cachedCastingTime, _, _, cachedSpellId, cachedBookType = libspell.GetSpellInfo(rawSpellName, rank)
+  local cachedRawSpellName, cachedRank, cachedTexture, cachedCastingTime, _, _, cachedSpellId, cachedBookType = libspell.GetSpellInfo(rawSpellName .. (rank and ("(" .. rank .. ")") or ""))
 
   CastCustom(cachedSpellId, cachedBookType, cachedRawSpellName, cachedRank, cachedTexture, cachedCastingTime)
 end, true)

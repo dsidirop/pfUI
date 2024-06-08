@@ -374,13 +374,13 @@ libcast.customcast[strlower(multishot)] = function(begin, duration)
 end
 
 local lastRawSpellName, lastfunc
-local function GetCustomCastFunc(spellName)
+local function GetCustomCastFunc(rawSpellName)
   -- to ultra-optimize cases in which paladins spam 'flash of light' all the time   this allows us to skip strlower + table lookup completely
   if rawequal(lastRawSpellName, rawSpellName) then return lastfunc end
 
   lastRawSpellName = rawSpellName
   
-  return libcast.customcast[strlower(spellName)]  
+  return libcast.customcast[strlower(rawSpellName)]  
 end
 
 local function CastCustom(id, bookType, rawSpellName, rank, texture, castingTime)

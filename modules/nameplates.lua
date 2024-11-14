@@ -706,6 +706,10 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
       r, g, b, a = RAID_CLASS_COLORS[class].r, RAID_CLASS_COLORS[class].g, RAID_CLASS_COLORS[class].b, 1
     end
 
+    if superwow_active and unitstr and UnitIsTapped(unitstr) and not UnitIsTappedByPlayer(unitstr) then
+      r, g, b, a = .5, .5, .5, .8
+    end
+
     if r ~= plate.cache.r or g ~= plate.cache.g or b ~= plate.cache.b then
       plate.health:SetStatusBarColor(r, g, b, a)
       plate.cache.r, plate.cache.g, plate.cache.b = r, g, b
@@ -1036,7 +1040,7 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
       local plate = C.nameplates["overlap"] == "1" and nameplate or parent
 
       if C.nameplates["vertical_offset"] ~= "0" then
-        nameplate:SetPoint("TOP", plate, "TOP", 0, tonumber(C.nameplates["vertical_offset"]))
+        nameplate:SetPoint("TOP", parent, "TOP", 0, tonumber(C.nameplates["vertical_offset"]))
       end
 
       -- replace clickhandler

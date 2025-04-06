@@ -56,6 +56,10 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
     return color
   end
 
+  local function DoNothing()
+    return
+  end
+
   local function IsNamePlate(frame)
     if frame:GetObjectType() ~= NAMEPLATE_FRAMETYPE then return nil end
     regions = plate:GetRegions()
@@ -191,10 +195,11 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
     local now
     for id = 1, 16 do
       local effect, _, texture, stacks, _, duration, timeleft = libdebuff:UnitDebuff(unitstr, id)
-      if effect and timeleft then
+      if effect and timeleft and timeleft > 0 then
         now = now or GetTime()
         local start = now - ( (duration or 0) - ( timeleft or 0) )
         local stop = now + ( timeleft or 0 )
+
         self.debuffcache[id] = self.debuffcache[id] or {}
         self.debuffcache[id].effect = effect
         self.debuffcache[id].texture = texture
@@ -202,9 +207,7 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
         self.debuffcache[id].duration = duration or 0
         self.debuffcache[id].start = start
         self.debuffcache[id].stop = stop
-      elseif self.debuffcache[id] then
-        self.debuffcache[id] = nil
-        table.remove(self.debuffcache, id)
+        self.debuffcache[id].empty = nil
       end
     end
 
@@ -212,10 +215,16 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
   end
 
   local function PlateUnitDebuff(self, id)
+    -- break on unknown data
     if not self.debuffcache then return end
     if not self.debuffcache[id] then return end
     if not self.debuffcache[id].stop then return end
 
+    -- break on timeout debuffs
+    if self.debuffcache[id].empty then return end
+    if self.debuffcache[id].stop < GetTime() then return end
+
+    -- return cached debuff
     local c = self.debuffcache[id]
     return c.effect, c.rank, c.texture, c.stacks, c.dtype, c.duration, (c.stop - GetTime())
   end
@@ -235,7 +244,18 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
     plate.debuffs[index].stacks:SetJustifyV("BOTTOM")
     plate.debuffs[index].stacks:SetTextColor(1,1,0)
 
-    plate.debuffs[index].cd = CreateFrame(COOLDOWN_FRAME_TYPE, plate.platename.."Debuff"..index.."Cooldown", plate.debuffs[index], "CooldownFrameTemplate")
+    if pfUI.client <= 11200 then
+      -- create a fake animation frame on vanilla to improve performance
+      plate.debuffs[index].cd = CreateFrame("Frame", plate.platename.."Debuff"..index.."Cooldown", plate.debuffs[index])
+      plate.debuffs[index].cd:SetScript("OnUpdate", CooldownFrame_OnUpdateModel)
+      plate.debuffs[index].cd.AdvanceTime = DoNothing
+      plate.debuffs[index].cd.SetSequence = DoNothing
+      plate.debuffs[index].cd.SetSequenceTime = DoNothing
+    else
+      -- use regular cooldown animation frames on burning crusade and later
+      plate.debuffs[index].cd = CreateFrame(COOLDOWN_FRAME_TYPE, plate.platename.."Debuff"..index.."Cooldown", plate.debuffs[index], "CooldownFrameTemplate")
+    end
+
     plate.debuffs[index].cd.pfCooldownStyleAnimation = 0
     plate.debuffs[index].cd.pfCooldownType = "ALL"
   end
@@ -872,13 +892,6 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
       nameplate:SetAlpha(tonumber(C.nameplates.notargalpha))
     end
 
-    -- use timer based updates
-    local now = GetTime()
-    if not nameplate.tick or nameplate.tick < now then
-      nameplate.tick = now + .2
-      update = true
-    end
-
     -- queue update on visual target update
     if nameplate.cache.target ~= target then
       nameplate.cache.target = target
@@ -909,7 +922,7 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
       update = true
     end
 
-    -- trigger update when name color changed
+    -- trigger update when level color changed
     local r, g, b = original.level:GetTextColor()
     r, g, b = r + .3, g + .3, b + .3
     if r + g + b ~= nameplate.cache.levelcolor then
@@ -920,31 +933,23 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
 
     -- scan for debuff timeouts
     if nameplate.debuffcache then
-      -- delete timed out caches
       for id, data in pairs(nameplate.debuffcache) do
-        if not data.stop or data.stop < now then
-          nameplate.debuffcache[id] = nil
-          trigger = true
+        if ( not data.stop or data.stop < now ) and not data.empty then
+          data.empty = true
+          update = true
         end
       end
+    end
 
-      -- remove nil keys whenever a value was removed
-      if trigger then
-        local count = 1
-        for id, data in pairs(nameplate.debuffcache) do
-          if id ~= count then
-            nameplate.debuffcache[count] = nameplate.debuffcache[id]
-            nameplate.debuffcache[id] = nil
-          end
-          count = count + 1
-        end
-        update = true
-      end
+    -- use timer based updates
+    if not nameplate.tick or nameplate.tick < now then
+      update = true
     end
 
     -- run full updates if required
     if update then
       nameplates:OnDataChanged(nameplate)
+      nameplate.tick = now + .5
     end
 
     -- target zoom

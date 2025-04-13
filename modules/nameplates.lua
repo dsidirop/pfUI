@@ -938,8 +938,9 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
     end
 
     -- scan for debuff timeouts
+    local now = GetTime()
     if nameplate.debuffcache then
-      for id, data in pairs(nameplate.debuffcache) do
+      for _, data in pairs(nameplate.debuffcache) do
         if ( not data.stop or data.stop < now ) and not data.empty then
           data.empty = true
           update = true

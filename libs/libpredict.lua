@@ -420,15 +420,23 @@ hooksecurefunc("CastSpellByName", function(effect, target)
   _cached_pfui_uf_mouseover = _cached_pfui_uf_mouseover or pfUI.uf.mouseover or {}
   local pfui_uf_mouseover_unit = _cached_pfui_uf_mouseover.unit
 
+  target = target and type(target) == "string" and UnitName(target) or target
+  target = target and target == 1 and UnitName("player") or target
+
   spell_queue[1] = effectRaw
   spell_queue[2] = effectRaw .. (rank or "")
-  spell_queue[3] = pfui_uf_mouseover_unit == "player"
-          and player
+  spell_queue[3] = target
+          or pfui_uf_mouseover_unit == "player" and player
           or (
-          (pfui_uf_mouseover_unit and UnitCanAssist("player", pfui_uf_mouseover_unit))
-                  and UnitName(pfui_uf_mouseover_unit) -- mouseover unit name
-                  or (UnitCanAssist("player", "target") and UnitName("target") or player) -- or default
-  )
+            pfui_uf_mouseover_unit
+            and UnitCanAssist("player", pfui_uf_mouseover_unit)
+            and UnitName(pfui_uf_mouseover_unit) -- mouseover unit name
+          )
+          or (
+            UnitCanAssist("player", "target")
+            and UnitName("target")
+          )
+          or player -- or default
 end, true)
 
 local scanner = libtipscan:GetScanner("prediction")

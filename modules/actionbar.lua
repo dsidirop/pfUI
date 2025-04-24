@@ -808,7 +808,12 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
       updatecache[id] = nil
     end
 
-    if ( this.tick or .2) > GetTime() then return else this.tick = GetTime() + .2 end
+    local now = GetTime()
+    if (this.tick or .2) > now then
+      return
+    end
+
+    this.tick = now + .2
 
     for id, button in pairs(buttoncache) do
       if button:IsShown() then ButtonRangeUpdate(button) end
@@ -1649,7 +1654,13 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
 
       -- queue events to fire only once per second
       if not this.event then return end
-      if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + 1 end
+
+      local now = GetTime()
+      if (this.tick or 1) > now then
+        return        
+      end
+
+      this.tick = now + 1
 
       -- scan for all reagent item counts
       for item in pairs(reagent_counts) do

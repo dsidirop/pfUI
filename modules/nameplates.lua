@@ -1024,22 +1024,34 @@ pfUI:RegisterModule("nameplates", "vanilla:tbc", function ()
 
     -- castbar update
     if C.nameplates["showcastbar"] == "1" and ( C.nameplates["targetcastbar"] == "0" or target ) then
-      local cast, nameSubtext, text, texture, startTime, endTime, isTradeSkill = UnitCastingInfo(target and "target" or name)
+      local channel, cast, nameSubtext, text, texture, startTime, endTime, isTradeSkill
+
+      -- detect cast or channel bars
+      cast, nameSubtext, text, texture, startTime, endTime, isTradeSkill = UnitCastingInfo(target and "target" or name)
+      if not cast then channel, nameSubtext, text, texture, startTime, endTime, isTradeSkill = UnitChannelInfo(target and "target" or name) end
 
       -- read enemy casts from SuperWoW if enabled
       if superwow_active then
         cast, nameSubtext, text, texture, startTime, endTime, isTradeSkill = UnitCastingInfo(nameplate.parent:GetName(1))
+        if not cast then channel, nameSubtext, text, texture, startTime, endTime, isTradeSkill = UnitChannelInfo(nameplate.parent:GetName(1)) end
       end
 
-      if not cast then
+      if not cast and not channel then
         nameplate.castbar:Hide()
-      elseif cast then
+      elseif cast or channel then
+        local effect = cast or channel
         local duration = endTime - startTime
-        nameplate.castbar:SetMinMaxValues(0,  duration/1000)
-        nameplate.castbar:SetValue(now - startTime/1000)
-        nameplate.castbar.text:SetText(round(startTime/1000 + duration/1000 - now,1))
+        local max = duration / 1000
+        local cur = now - startTime / 1000
+
+        -- invert castbar values while channeling
+        if channel then cur = max + startTime/1000 - now end
+
+        nameplate.castbar:SetMinMaxValues(0, duration/1000)
+        nameplate.castbar:SetValue(cur)
+        nameplate.castbar.text:SetText(round(cur,1))
         if C.nameplates.spellname == "1" then
-          nameplate.castbar.spell:SetText(cast)
+          nameplate.castbar.spell:SetText(effect)
         else
           nameplate.castbar.spell:SetText("")
         end

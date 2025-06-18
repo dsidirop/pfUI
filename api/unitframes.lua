@@ -602,6 +602,19 @@ function pfUI.uf:UpdateConfig()
     f.portrait:Hide()
   end
 
+  if f.group then
+    if f.config.raidgrouplabel == "1" then
+      f.group:Show()
+    else
+      f.group:Hide()
+    end
+
+    local xoff = tonumber(f.config.grouplabelxoff) or 0
+    local yoff = tonumber(f.config.grouplabelyoff) or 8
+    f.group:SetPoint("TOPLEFT", f, "BOTTOMLEFT", xoff, yoff)
+    f.group:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", xoff, yoff)
+  end
+
   if f.config.hitindicator == "1" then
     f.feedbackText:SetFont(pfUI.media[f.config.hitindicatorfont], f.config.hitindicatorsize, "OUTLINE")
     f.feedbackFontHeight = f.config.hitindicatorsize
@@ -624,7 +637,6 @@ function pfUI.uf:UpdateConfig()
   f.hpLeftText:SetFontObject(GameFontWhite)
   f.hpLeftText:SetFont(fontname, fontsize, fontstyle)
   f.hpLeftText:SetJustifyH("LEFT")
-  f.hpLeftText:SetParent(f.hp.bar)
   f.hpLeftText:ClearAllPoints()
   f.hpLeftText:SetPoint("TOPLEFT",f.hp.bar, "TOPLEFT", 2*(default_border + f.config.txthpleftoffx), 1 + tonumber(f.config.txthpleftoffy))
   f.hpLeftText:SetPoint("BOTTOMRIGHT",f.hp.bar, "BOTTOMRIGHT", -2*(default_border + f.config.txthpleftoffx), f.config.txthpleftoffy)
@@ -632,7 +644,6 @@ function pfUI.uf:UpdateConfig()
   f.hpRightText:SetFontObject(GameFontWhite)
   f.hpRightText:SetFont(fontname, fontsize, fontstyle)
   f.hpRightText:SetJustifyH("RIGHT")
-  f.hpRightText:SetParent(f.hp.bar)
   f.hpRightText:ClearAllPoints()
   f.hpRightText:SetPoint("TOPLEFT",f.hp.bar, "TOPLEFT", 2*(default_border + f.config.txthprightoffx), 1 + tonumber(f.config.txthprightoffy))
   f.hpRightText:SetPoint("BOTTOMRIGHT",f.hp.bar, "BOTTOMRIGHT", -2*(default_border + f.config.txthprightoffx), f.config.txthprightoffy)
@@ -640,7 +651,6 @@ function pfUI.uf:UpdateConfig()
   f.hpCenterText:SetFontObject(GameFontWhite)
   f.hpCenterText:SetFont(fontname, fontsize, fontstyle)
   f.hpCenterText:SetJustifyH("CENTER")
-  f.hpCenterText:SetParent(f.hp.bar)
   f.hpCenterText:ClearAllPoints()
   f.hpCenterText:SetPoint("TOPLEFT",f.hp.bar, "TOPLEFT", f.config.txthpcenteroffx, 1 + tonumber(f.config.txthpcenteroffy))
   f.hpCenterText:SetPoint("BOTTOMRIGHT",f.hp.bar, "BOTTOMRIGHT", f.config.txthpcenteroffx, f.config.txthpcenteroffy)
@@ -648,7 +658,6 @@ function pfUI.uf:UpdateConfig()
   f.powerLeftText:SetFontObject(GameFontWhite)
   f.powerLeftText:SetFont(fontname, fontsize, fontstyle)
   f.powerLeftText:SetJustifyH("LEFT")
-  f.powerLeftText:SetParent(f.power.bar)
   f.powerLeftText:ClearAllPoints()
   f.powerLeftText:SetPoint("TOPLEFT",f.power.bar, "TOPLEFT", 2*(default_border + f.config.txtpowerleftoffx), 1 + tonumber(f.config.txtpowerleftoffy))
   f.powerLeftText:SetPoint("BOTTOMRIGHT",f.power.bar, "BOTTOMRIGHT", -2*(default_border + f.config.txtpowerleftoffx), f.config.txtpowerleftoffy)
@@ -656,7 +665,6 @@ function pfUI.uf:UpdateConfig()
   f.powerRightText:SetFontObject(GameFontWhite)
   f.powerRightText:SetFont(fontname, fontsize, fontstyle)
   f.powerRightText:SetJustifyH("RIGHT")
-  f.powerRightText:SetParent(f.power.bar)
   f.powerRightText:ClearAllPoints()
   f.powerRightText:SetPoint("TOPLEFT",f.power.bar, "TOPLEFT", 2*(default_border + f.config.txtpowerrightoffx), 1 + tonumber(f.config.txtpowerrightoffy))
   f.powerRightText:SetPoint("BOTTOMRIGHT",f.power.bar, "BOTTOMRIGHT", -2*(default_border + f.config.txtpowerrightoffx), f.config.txtpowerrightoffy)
@@ -664,7 +672,6 @@ function pfUI.uf:UpdateConfig()
   f.powerCenterText:SetFontObject(GameFontWhite)
   f.powerCenterText:SetFont(fontname, fontsize, fontstyle)
   f.powerCenterText:SetJustifyH("CENTER")
-  f.powerCenterText:SetParent(f.power.bar)
   f.powerCenterText:ClearAllPoints()
   f.powerCenterText:SetPoint("TOPLEFT",f.power.bar, "TOPLEFT", f.config.txtpowercenteroffx, 1 + tonumber(f.config.txtpowercenteroffy))
   f.powerCenterText:SetPoint("BOTTOMRIGHT",f.power.bar, "BOTTOMRIGHT", f.config.txtpowercenteroffx, f.config.txtpowercenteroffy)
@@ -717,7 +724,7 @@ function pfUI.uf:UpdateConfig()
 
   f.raidIcon:SetWidth(f.config.raidiconsize)
   f.raidIcon:SetHeight(f.config.raidiconsize)
-  f.raidIcon:SetPoint("TOP", f, "TOP", 0, 6)
+  f.raidIcon:SetPoint("CENTER", f, f.config.raidiconalign, f.config.raidiconoffx, f.config.raidiconoffy)
   f.raidIcon.texture:SetTexture(pfUI.media["img:raidicons"])
   f.raidIcon.texture:SetAllPoints(f.raidIcon)
   f.raidIcon:Hide()
@@ -1288,12 +1295,16 @@ function pfUI.uf:CreateUnitFrame(unit, id, config, tick)
   f.combat.tex = f.combat:CreateTexture(nil, "OVERLAY")
   f.combat.tex:SetAllPoints()
 
-  f.hpLeftText = f:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
-  f.hpRightText = f:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
-  f.hpCenterText = f:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
-  f.powerLeftText = f:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
-  f.powerRightText = f:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
-  f.powerCenterText = f:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
+  f.texts = CreateFrame("Frame", nil, f)
+  f.texts:SetFrameLevel(16)
+  f.texts:SetAllPoints()
+
+  f.hpLeftText = f.texts:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
+  f.hpRightText = f.texts:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
+  f.hpCenterText = f.texts:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
+  f.powerLeftText = f.texts:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
+  f.powerRightText = f.texts:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
+  f.powerCenterText = f.texts:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
 
   f.incHeal = CreateFrame("Frame", nil, f.hp)
   f.incHeal.texture = f.incHeal:CreateTexture(nil, "BACKGROUND")
@@ -1325,6 +1336,16 @@ function pfUI.uf:CreateUnitFrame(unit, id, config, tick)
   f.portrait.model = CreateFrame("PlayerModel", "pfPortraitModel" .. f.label .. f.id, f.portrait)
   f.portrait.model.next = CreateFrame("PlayerModel", nil, nil)
   f.feedbackText = f:CreateFontString("pfHitIndicator" .. f.label .. f.id, "OVERLAY", "NumberFontNormalHuge")
+
+  if f.label == "raid" and math.mod(f.id, 5) == 1 then
+    local group = math.ceil(f.id/5)
+    f.group = f.group or f.hp.bar:CreateFontString("Status", "OVERLAY", "GameFontNormalSmall")
+    f.group:SetFont(pfUI.font_unit, 8, "OUTLINE")
+    f.group:SetTextColor(1,1,1,.8)
+    f.group:SetHeight(16)
+    f.group:SetText("Group " .. group)
+    f.group:Hide()
+  end
 
   f:Hide()
   f:UpdateConfig()
@@ -2094,16 +2115,23 @@ function pfUI.uf:ClickAction(button)
       showmenu = nil
     else
       -- run click cast action
-      local tswitch = UnitIsUnit(unitstr, "target")
-      TargetUnit(unitstr)
+      local is_macro = string.find(this.clickactions[modstring], "^%/(.+)")
 
-      if string.find(this.clickactions[modstring], "^%/(.+)") then
-        RunMacroText(this.clickactions[modstring])
+      if superwow_active and not is_macro then
+        CastSpellByName(this.clickactions[modstring], unitstr)
       else
-        CastSpellByName(this.clickactions[modstring])
+        local tswitch = UnitIsUnit(unitstr, "target")
+        TargetUnit(unitstr)
+
+        if is_macro then
+          RunMacroText(this.clickactions[modstring])
+        else
+          CastSpellByName(this.clickactions[modstring])
+        end
+
+        if not tswitch then TargetLastTarget() end
       end
 
-      if not tswitch then TargetLastTarget() end
       return
     end
   end

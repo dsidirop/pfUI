@@ -234,17 +234,17 @@ end
 -- returns:     [numbers]        capture indexes
 local capture_cache = {}
 function pfUI.api.GetCaptures(pat)
-    local r = capture_cache
-    if not r[pat] then
-        for a, b, c, d, e in gfind(gsub(pat, "%((.+)%)", "%1"), gsub(pat, "%d%$", "%%(.-)$")) do
-            r[pat] = { a, b, c, d, e }
-        end
+  local r = capture_cache
+
+  if not r[pat] then
+    for a, b, c, d, e in gfind(gsub(pat, "%((.+)%)", "%1"), gsub(pat, "%d%$", "%%(.-)$")) do
+      r[pat] = { a, b, c, d, e}
     end
 
-    if not r[pat] then
-        return nil, nil, nil, nil
-    end
-    return r[pat][1], r[pat][2], r[pat][3], r[pat][4], r[pat][5]
+    r[pat] = r[pat] or {}
+  end
+
+  return r[pat][1], r[pat][2], r[pat][3], r[pat][4], r[pat][5]
 end
 
 -- [ SanitizePattern ]

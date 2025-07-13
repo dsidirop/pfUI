@@ -760,23 +760,24 @@ end
 -- 'position'   [string]    where it should appear, takes the following:
 --                          "TOP", "RIGHT", "BOTTOM", "LEFT"
 function pfUI.api.AlignToPosition(frame, anchor, position, spacing)
-    frame:ClearAllPoints()
-    if position == "TOP" and anchor then
-        frame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, (spacing or 0))
-        frame:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, (spacing or 0))
-    elseif position == "RIGHT" and anchor then
-        frame:SetPoint("TOPLEFT", anchor, "TOPRIGHT", (spacing or 0), 0)
-        frame:SetPoint("BOTTOMLEFT", anchor, "BOTTOMRIGHT", (spacing or 0), 0)
-    elseif position == "BOTTOM" and anchor then
-        frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -(spacing or 0))
-        frame:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -(spacing or 0))
-    elseif position == "LEFT" and anchor then
-        frame:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -(spacing or 0), 0)
-        frame:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMLEFT", -(spacing or 0), 0)
-    else
-        frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)
-        frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
-    end
+  if frame == anchor then return end
+  frame:ClearAllPoints()
+  if position == "TOP" and anchor then
+    frame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, (spacing or 0))
+    frame:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, (spacing or 0))
+  elseif position == "RIGHT" and anchor then
+    frame:SetPoint("TOPLEFT", anchor, "TOPRIGHT", (spacing or 0), 0)
+    frame:SetPoint("BOTTOMLEFT", anchor, "BOTTOMRIGHT", (spacing or 0), 0)
+  elseif position == "BOTTOM" and anchor then
+    frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -(spacing or 0))
+    frame:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -(spacing or 0))
+  elseif position == "LEFT" and anchor then
+    frame:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -(spacing or 0), 0)
+    frame:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMLEFT", -(spacing or 0), 0)
+  else
+    frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)
+    frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+  end
 end
 
 -- [ SetAutoPoint ]

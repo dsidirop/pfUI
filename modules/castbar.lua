@@ -215,8 +215,9 @@ pfUI:RegisterModule("castbar", "vanilla:tbc", function ()
     pfUI.castbar.player.spacing = default_border * 2 + tonumber(C.unitframes.player.pspace) * GetPerfectPixel()
 
     if pfUI.uf.player then
-      local width = C.castbar.player.width ~= "-1" and C.castbar.player.width or pfUI.uf.player.power:GetWidth()
-      pfUI.castbar.player:SetPoint("TOPLEFT", pfUI.uf.player.power, "BOTTOMLEFT", 0, -pfUI.castbar.player.spacing)
+      local anchor = pfUI.uf.player.portrait:GetHeight() > pfUI.uf.player:GetHeight() and pfUI.uf.player.power or pfUI.uf.player
+      local width = C.castbar.player.width ~= "-1" and C.castbar.player.width or anchor:GetWidth()
+      pfUI.castbar.player:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -pfUI.castbar.player.spacing)
       pfUI.castbar.player:SetWidth(width)
     else
       local width = C.castbar.player.width ~= "-1" and C.castbar.player.width or 200
@@ -242,8 +243,9 @@ pfUI:RegisterModule("castbar", "vanilla:tbc", function ()
     pfUI.castbar.target.spacing = default_border * 2 + tonumber(C.unitframes.target.pspace) * GetPerfectPixel()
 
     if pfUI.uf.target then
-      local width = C.castbar.target.width ~= "-1" and C.castbar.target.width or pfUI.uf.target.power:GetWidth()
-      pfUI.castbar.target:SetPoint("TOPLEFT", pfUI.uf.target.power, "BOTTOMLEFT", 0, -pfUI.castbar.target.spacing)
+      local anchor = pfUI.uf.target.portrait:GetHeight() > pfUI.uf.target:GetHeight() and pfUI.uf.target.power or pfUI.uf.target
+      local width = C.castbar.target.width ~= "-1" and C.castbar.target.width or anchor:GetWidth()
+      pfUI.castbar.target:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -pfUI.castbar.target.spacing)
       pfUI.castbar.target:SetWidth(width)
     else
       local width = C.castbar.target.width ~= "-1" and C.castbar.target.width or 200
@@ -273,8 +275,9 @@ pfUI:RegisterModule("castbar", "vanilla:tbc", function ()
       pfUI.castbar.focus.unitstr = nil
     end
 
-    local width = C.castbar.focus.width ~= "-1" and C.castbar.focus.width or pfUI.uf.focus.power:GetWidth()
-    pfUI.castbar.focus:SetPoint("TOPLEFT", pfUI.uf.focus.power, "BOTTOMLEFT", 0, -pfUI.castbar.focus.spacing)
+    local anchor = pfUI.uf.focus.portrait:GetHeight() > pfUI.uf.focus:GetHeight() and pfUI.uf.focus.power or pfUI.uf.focus
+    local width = C.castbar.focus.width ~= "-1" and C.castbar.focus.width or anchor:GetWidth()
+    pfUI.castbar.focus:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -pfUI.castbar.focus.spacing)
     pfUI.castbar.focus:SetWidth(width)
 
     if C.castbar.focus.height ~= "-1" then

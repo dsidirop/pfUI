@@ -511,7 +511,7 @@ function pfUI.uf:UpdateConfig()
   end
 
   f.power:ClearAllPoints()
-  f.power:SetPoint(f.config.panchor, f.hp, relative_point, f.config.poffx, -2*default_border - f.config.pspace + f.config.poffy * GetPerfectPixel())
+  f.power:SetPoint(f.config.panchor, f.hp, relative_point, f.config.poffx, -2 * default_border - spacing + f.config.poffy * GetPerfectPixel())
   f.power:SetWidth((f.config.pwidth ~= "-1" and f.config.pwidth or f.config.width))
   f.power:SetHeight(f.config.pheight)
   if tonumber(f.config.pheight) < 0 then f.power:Hide() end
@@ -774,7 +774,7 @@ function pfUI.uf:UpdateConfig()
       f.buffs[i].id = i
       f.buffs[i]:Hide()
 
-      f.buffs[i]:SetFrameLevel(20)
+      f.buffs[i]:SetFrameLevel(12)
       CreateBackdrop(f.buffs[i], default_border)
 
       f.buffs[i]:RegisterForClicks("RightButtonUp")
@@ -855,7 +855,7 @@ function pfUI.uf:UpdateConfig()
       f.debuffs[i].id = i
       f.debuffs[i]:Hide()
 
-      f.debuffs[i]:SetFrameLevel(20)
+      f.debuffs[i]:SetFrameLevel(12)
       CreateBackdrop(f.debuffs[i], default_border)
 
       f.debuffs[i]:RegisterForClicks("RightButtonUp")
@@ -2668,31 +2668,17 @@ function pfUI.uf.GetColor(self, preset)
     end
 
   elseif preset == "power" and config["powercolor"] == "1" then
-    local mana = config.defcolor == "0" and config.manacolor or C.unitframes.manacolor
-    local rage = config.defcolor == "0" and config.ragecolor or C.unitframes.ragecolor
-    local energy = config.defcolor == "0" and config.energycolor or C.unitframes.energycolor
-    local focus = config.defcolor == "0" and config.focuscolor or C.unitframes.focuscolor
-
-    r, g, b = .5, .5, .5
-    local utype = UnitPowerType(unitstr)
-    if utype == 0 then
-      r, g, b, a = GetStringColor(mana)
-    elseif utype == 1 then
-      r, g, b, a = GetStringColor(rage)
-    elseif utype == 2 then
-      r, g, b, a = GetStringColor(focus)
-    elseif utype == 3 then
-      r, g, b, a = GetStringColor(energy)
-    end
+    r = ManaBarColor[UnitPowerType(unitstr)].r
+    g = ManaBarColor[UnitPowerType(unitstr)].g
+    b = ManaBarColor[UnitPowerType(unitstr)].b
   elseif preset == "level" and config["levelcolor"] == "1" then
     r = GetDifficultyColor(UnitLevel(unitstr)).r
     g = GetDifficultyColor(UnitLevel(unitstr)).g
     b = GetDifficultyColor(UnitLevel(unitstr)).b
   end
 
-  -- pastel
   if C.unitframes.pastel == "1" then
-    r, g, b = (r + .5) * .5, (g + .5) * .5, (b + .5) * .5
+    r, g, b = (r + .75) * .5, (g + .75) * .5, (b + .75) * .5
   end
 
   return rgbhex(r,g,b)

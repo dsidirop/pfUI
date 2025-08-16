@@ -421,6 +421,7 @@ hooksecurefunc("CastSpellByName", function(effect, target)
   local pfui_uf_mouseover_unit = _cached_pfui_uf_mouseover.unit
 
   target = target and type(target) == "string" and UnitName(target) or target
+  target = target and target == true and UnitName("player") or target
   target = target and target == 1 and UnitName("player") or target
 
   spell_queue[1] = effectRaw

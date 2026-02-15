@@ -266,15 +266,17 @@ function libdebuff:UnitDebuff(unit, id)
     effect = scanner:Line(1) or ""
   end
 
+  local now = GetTime()
+    
   -- read level based debuff table
   local data = libdebuff.objects[unitname] and libdebuff.objects[unitname][unitlevel]
   data = data or libdebuff.objects[unitname] and libdebuff.objects[unitname][0]
 
   if data and data[effect] then
-    if data[effect].duration and data[effect].start and data[effect].duration + data[effect].start > GetTime() then
+    if data[effect].duration and data[effect].start and data[effect].duration + data[effect].start > now then
       -- read valid debuff data
       duration = data[effect].duration
-      timeleft = duration + data[effect].start - GetTime()
+      timeleft = duration + data[effect].start - now
       caster = data[effect].caster
     else
       -- clean up invalid values

@@ -808,7 +808,12 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
       updatecache[id] = nil
     end
 
-    if ( this.tick or .2) > GetTime() then return else this.tick = GetTime() + .2 end
+    local now = GetTime()
+    if (this.tick or .2) > now then
+      return
+    end
+
+    this.tick = now + .2
 
     for id, button in pairs(buttoncache) do
       if button:IsShown() then ButtonRangeUpdate(button) end
@@ -956,7 +961,13 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
     end
 
     -- setup page switch frame
+    local prowling = nil
     local pageswitch = CreateFrame("Frame", "pfActionBarPageSwitch", UIParent)
+    -- Check prowling only on buff change
+    pageswitch:RegisterEvent("PLAYER_AURAS_CHANGED")
+    pageswitch:SetScript("OnEvent", function()
+      prowling = IsCatStealth()
+    end)
     pageswitch:SetScript("OnUpdate", function()
       -- switch actionbar page depending on meta key that is pressed
       if C.bars.pagemastershift == "1" and IsShiftKeyDown() then
@@ -974,10 +985,9 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
 
       -- switch actionbar page if druid stealth is detected
       if C.bars.druidstealth == "1" then
-        local stealth = IsCatStealth()
-        if stealth and _G.CURRENT_ACTIONBAR_PAGE == 1 then
+        if prowling and _G.CURRENT_ACTIONBAR_PAGE == 1 then
           SwitchBar(prowl)
-        elseif not stealth and _G.CURRENT_ACTIONBAR_PAGE == 8 then
+        elseif not prowling and _G.CURRENT_ACTIONBAR_PAGE == 8 then
           SwitchBar(default)
         end
       end
@@ -1669,7 +1679,13 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
 
       -- queue events to fire only once per second
       if not this.event then return end
-      if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + 1 end
+
+      local now = GetTime()
+      if (this.tick or 1) > now then
+        return        
+      end
+
+      this.tick = now + 1
 
       -- scan for all reagent item counts
       for item in pairs(reagent_counts) do

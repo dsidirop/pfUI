@@ -127,16 +127,16 @@ pfUI:RegisterModule("chat", "vanilla:tbc", function ()
       ["fm"]="%s.%s.%s"},
   }
 
-  pfUI.chat.URLFuncs = {
-    ["WWW"] = function(a1,a2,a3) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.WWW.fm,a1,a2,a3) end,
-    ["PROTOCOL"] = function(a1,a2) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.PROTOCOL.fm,a1,a2) end,
-    ["EMAIL"] = function(a1,a2,a3,a4) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.EMAIL.fm,a1,a2,a3,a4) end,
-    ["PORTIP"] = function(a1,a2,a3,a4,a5) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.PORTIP.fm,a1,a2,a3,a4,a5) end,
-    ["IP"] = function(a1,a2,a3,a4) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.IP.fm,a1,a2,a3,a4) end,
-    ["SHORTURL"] = function(a1,a2,a3) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.SHORTURL.fm,a1,a2,a3) end,
-    ["URLIP"] = function(a1,a2,a3,a4) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.URLIP.fm,a1,a2,a3,a4) end,
-    ["URL"] = function(a1,a2,a3) return pfUI.chat:FormatLink(pfUI.chat.URLPattern.URL.fm,a1,a2,a3) end,
-  }
+  pfUI.chat.URLFuncs = (function(urlPatternsSnapshot, pfuiChatSnapshot)
+    local funcs = {}
+    for patternName, _ in pairs(urlPatternsSnapshot) do
+      local patternNameSnapshot = patternName -- must snapshot
+      funcs[patternNameSnapshot] = function(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+        return pfuiChatSnapshot:FormatLink(urlPatternsSnapshot[patternNameSnapshot].fm, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+      end
+    end
+    return funcs
+  end)(pfUI.chat.URLPattern, pfUI.chat)
 
   -- url copy dialog
   function pfUI.chat:FormatLink(formatter,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10)
@@ -166,15 +166,10 @@ pfUI:RegisterModule("chat", "vanilla:tbc", function ()
   end
 
   function pfUI.chat:HandleLink(text)
-    local URLPattern = pfUI.chat.URLPattern
-    text = string.gsub (text, URLPattern.WWW.rx, pfUI.chat.URLFuncs.WWW)
-    text = string.gsub (text, URLPattern.PROTOCOL.rx, pfUI.chat.URLFuncs.PROTOCOL)
-    text = string.gsub (text, URLPattern.EMAIL.rx, pfUI.chat.URLFuncs.EMAIL)
-    text = string.gsub (text, URLPattern.PORTIP.rx, pfUI.chat.URLFuncs.PORTIP)
-    text = string.gsub (text, URLPattern.IP.rx, pfUI.chat.URLFuncs.IP)
-    text = string.gsub (text, URLPattern.SHORTURL.rx, pfUI.chat.URLFuncs.SHORTURL)
-    text = string.gsub (text, URLPattern.URLIP.rx, pfUI.chat.URLFuncs.URLIP)
-    text = string.gsub (text, URLPattern.URL.rx, pfUI.chat.URLFuncs.URL)
+    local urlFuncs = pfUI.chat.URLFuncs
+    for patternName, patternSpecs in pairs(pfUI.chat.URLPattern) do
+      text = string.gsub(text, patternSpecs.rx, urlFuncs[patternName])
+    end
     return text
   end
 

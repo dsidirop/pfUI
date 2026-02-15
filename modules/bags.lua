@@ -100,8 +100,13 @@ pfUI:RegisterModule("bags", "vanilla:tbc", function ()
   pfUI.bag.delay = { UpdateBag = {} }
 
   pfUI.bag:SetScript("OnUpdate", function()
-    -- update delayed ones every 0.1s
-    if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + .1 end
+    -- update delayed once every 0.1s
+    local now = GetTime()
+    if (this.tick or 1) > now then
+      return
+    end
+
+    this.tick = now + .1
 
     if this.delay.RefreshSpells then
       this.delay.RefreshSpells = nil
@@ -457,7 +462,7 @@ pfUI:RegisterModule("bags", "vanilla:tbc", function ()
     ContainerFrame_UpdateCooldown(bag, pfUI.bags[bag].slots[slot].frame)
 
     -- detect backdrop border color
-    if texture and itype == "Quest" then
+    if texture and itype == L["itemtypes"]["INVTYPE_QUEST"] then
       pfUI.bags[bag].slots[slot].frame.backdrop:SetBackdropBorderColor(1, .8, .2, .8)
       pfUI.bags[bag].slots[slot].frame.qtext:SetText("?")
     elseif texture and quality and quality > tonumber(C.appearance.bags.borderlimit) then
@@ -1000,16 +1005,41 @@ pfUI:RegisterModule("bags", "vanilla:tbc", function ()
         frame.search.edit:SetTextColor(.5,.5,.5,1)
 
         frame.search.edit:SetScript("OnEditFocusGained", function()
-          this:SetText("")
+          if this:GetText() == T["Search"] then
+            this:SetText("")
+          end
         end)
 
         frame.search.edit:SetScript("OnEditFocusLost", function()
-          this:SetText(T["Search"])
-          for bag=-2, 11 do
-            local bagsize = GetContainerNumSlots(bag)
-            if bag == -2 and pfUI.bag.showKeyring == true then bagsize = GetKeyRingSize() end
-            for slot=1, bagsize do
-              pfUI.bags[bag].slots[slot].frame:SetAlpha(1)
+          if not pfUI.bag:IsShown() then
+            this:SetText(T["Search"])
+            for bag=-2, 11 do
+              local bagsize = GetContainerNumSlots(bag)
+              if bag == -2 and pfUI.bag.showKeyring == true then bagsize = GetKeyRingSize() end
+              for slot=1, bagsize do
+                pfUI.bags[bag].slots[slot].frame:SetAlpha(1)
+              end
+            end
+          end
+        end)
+
+        frame.search.edit:SetScript("OnLeave", function()
+          if GetMouseFocus() ~= this then
+            this:ClearFocus()
+          end
+        end)
+
+        frame.search:SetScript("OnHide", function()
+          frame.search.edit:SetText(T["Search"])
+          for bag = -2, 11 do
+            if pfUI.bags[bag] then
+              local bagsize = GetContainerNumSlots(bag)
+              if bag == -2 and pfUI.bag.showKeyring == true then bagsize = GetKeyRingSize() end
+              for slot = 1, bagsize do
+                if pfUI.bags[bag] then
+                  pfUI.bags[bag].slots[slot].frame:SetAlpha(1)
+                end
+              end
             end
           end
         end)

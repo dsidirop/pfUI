@@ -76,7 +76,7 @@ pfUI:RegisterModule("buffwatch", "vanilla:tbc", function ()
 
   local function GetBuffData(unit, id, type, selfdebuff)
     if unit == "player" then
-      local bid = GetPlayerBuff(PLAYER_BUFF_START_ID+id, type)
+      local bid = pfUI.api.GetPlayerBuffX(id, type)
       local stacks = GetPlayerBuffApplications(bid)
       local remaining = GetPlayerBuffTimeLeft(bid)
       local texture = GetPlayerBuffTexture(bid)
@@ -115,7 +115,7 @@ pfUI:RegisterModule("buffwatch", "vanilla:tbc", function ()
         DEFAULT_CHAT_FRAME:AddMessage("|cff33ffcc" .. skill .. "|r" .. T["is now blacklisted."])
       end
     elseif this.parent.unit == "player" then
-      CancelPlayerBuff(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,this.type))
+      CancelPlayerBuff(pfUI.api.GetPlayerBuffX(this.id,this.type))
     end
   end
 
@@ -123,7 +123,7 @@ pfUI:RegisterModule("buffwatch", "vanilla:tbc", function ()
     GameTooltip:SetOwner(this, "NONE")
 
     if this.unit == "player" then
-      GameTooltip:SetPlayerBuff(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,this.type))
+      GameTooltip:SetPlayerBuff(pfUI.api.GetPlayerBuffX(this.id,this.type))
     elseif this.type == "HARMFUL" then
       GameTooltip:SetUnitDebuff(this.unit, this.id)
     elseif this.type == "HELPFUL" then
@@ -144,10 +144,13 @@ pfUI:RegisterModule("buffwatch", "vanilla:tbc", function ()
   end
 
   local function StatusBarOnUpdate()
-    local remaining = this.endtime - GetTime()
+    local now = GetTime()
+    local remaining = this.endtime - now
+    
     this.bar:SetValue(remaining > 0 and remaining or 0)
+    if (this.tick or 1) > now then return end
 
-    if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + .1 end
+    this.tick = now + .1
     this.time:SetText(remaining > 0 and GetColoredTimeString(remaining) or "")
   end
 
@@ -255,7 +258,7 @@ pfUI:RegisterModule("buffwatch", "vanilla:tbc", function ()
     table.sort(frame.buffs, frame.buffcmp)
 
     -- create a buff bar for each below threshold
-    local bar = 1
+    local bar, now = 1, nil
     for id, data in pairs(frame.buffs) do
       if data[1] and ((data[1] ~= 0 and data[1] < frame.threshold) or frame.threshold == -1) -- timeleft checks
         and data[3] and data[3] ~= "" -- buff has a name
@@ -268,7 +271,9 @@ pfUI:RegisterModule("buffwatch", "vanilla:tbc", function ()
         frame.bars[bar].id = data[2]
         frame.bars[bar].unit = frame.unit
         frame.bars[bar].type = frame.type
-        frame.bars[bar].endtime = GetTime() + ( data[1] > 0 and data[1] or -1 )
+
+        now = now or GetTime()
+        frame.bars[bar].endtime = now + ( data[1] > 0 and data[1] or -1 )
 
         -- update max duration the cached remaining values is less than
         -- the real one, indicates a buff renewal
@@ -361,7 +366,10 @@ pfUI:RegisterModule("buffwatch", "vanilla:tbc", function ()
 
   -- Create a new Buff Bar
   local function BuffBarFrameOnUpdate()
-    if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + .4 end
+    local now = GetTime()
+    if (this.tick or 1) > now then return end
+
+    this.tick = now + .4
     RefreshBuffBarFrame(this)
     this:RefreshPosition()
   end

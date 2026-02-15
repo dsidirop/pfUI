@@ -336,7 +336,7 @@ pfUI:RegisterModule("superwow", "vanilla", function ()
       if not libcast.db[guid] then libcast.db[guid] = {} end
       libcast.db[guid].cast = spell
       libcast.db[guid].rank = nil
-      libcast.db[guid].start = GetTime()
+      libcast.db[guid].start = start
       libcast.db[guid].casttime = timer
       libcast.db[guid].icon = icon
       libcast.db[guid].channel = event_type == "CHANNEL" or false

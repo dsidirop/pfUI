@@ -33,9 +33,16 @@ local glow2 = {
 
 local maxdurations = {}
 local function BuffOnUpdate()
-  if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + .2 end
-  local timeleft = GetPlayerBuffTimeLeft(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HELPFUL"))
-  local texture = GetPlayerBuffTexture(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HELPFUL"))
+  local now = GetTime()
+  if (this.tick or 1) > now then
+    return
+  end
+
+  this.tick = now + .2
+  
+  local bid = pfUI.api.GetPlayerBuffX(this.id,"HELPFUL")
+  local timeleft = GetPlayerBuffTimeLeft(bid)
+  local texture = GetPlayerBuffTexture(bid)
   local start = 0
 
   if timeleft > 0 then
@@ -44,7 +51,8 @@ local function BuffOnUpdate()
     elseif maxdurations[texture] and maxdurations[texture] < timeleft then
       maxdurations[texture] = timeleft
     end
-    start = GetTime() + timeleft - maxdurations[texture]
+
+    start = now + timeleft - maxdurations[texture]
   end
 
   CooldownFrame_SetTimer(this.cd, start, maxdurations[texture], timeleft > 0 and 1 or 0)
@@ -65,13 +73,13 @@ local function BuffOnEnter()
 
   GameTooltip:SetOwner(this, "ANCHOR_BOTTOMRIGHT")
   if parent.label == "player" then
-    GameTooltip:SetPlayerBuff(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HELPFUL"))
+    GameTooltip:SetPlayerBuff(pfUI.api.GetPlayerBuffX(this.id,"HELPFUL"))
   else
     GameTooltip:SetUnitBuff(parent.label .. parent.id, this.id)
   end
 
   if IsShiftKeyDown() then
-    local texture = parent.label == "player" and GetPlayerBuffTexture(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HELPFUL")) or UnitBuff(parent.label .. parent.id, this.id)
+    local texture = parent.label == "player" and GetPlayerBuffTexture(pfUI.api.GetPlayerBuffX(this.id,"HELPFUL")) or UnitBuff(parent.label .. parent.id, this.id)
 
     local playerlist = ""
     local first = true
@@ -114,14 +122,20 @@ end
 
 local function BuffOnClick()
   if this:GetParent().label == "player" then
-    CancelPlayerBuff(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HELPFUL"))
+    CancelPlayerBuff(pfUI.api.GetPlayerBuffX(this.id,"HELPFUL"))
   end
 end
 
 local function DebuffOnUpdate()
-  if ( this.tick or 1) > GetTime() then return else this.tick = GetTime() + .2 end
-  local timeleft = GetPlayerBuffTimeLeft(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HARMFUL"))
-  local texture = GetPlayerBuffTexture(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HARMFUL"))
+  local now = GetTime()
+  if (this.tick or 1) > now then
+    return
+  end
+
+  this.tick = now + .2
+  local bid = pfUI.api.GetPlayerBuffX(this.id,"HARMFUL")
+  local timeleft = GetPlayerBuffTimeLeft(bid)
+  local texture = GetPlayerBuffTexture(bid)
   local start = 0
 
   if timeleft > 0 then
@@ -130,7 +144,8 @@ local function DebuffOnUpdate()
     elseif maxdurations[texture] and maxdurations[texture] < timeleft then
       maxdurations[texture] = timeleft
     end
-    start = GetTime() + timeleft - maxdurations[texture]
+
+    start = now + timeleft - maxdurations[texture]
   end
 
   CooldownFrame_SetTimer(this.cd, start, maxdurations[texture], timeleft > 0 and 1 or 0)
@@ -141,7 +156,7 @@ local function DebuffOnEnter()
 
   GameTooltip:SetOwner(this, "ANCHOR_BOTTOMRIGHT")
   if this:GetParent().label == "player" then
-    GameTooltip:SetPlayerBuff(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HARMFUL"))
+    GameTooltip:SetPlayerBuff(pfUI.api.GetPlayerBuffX(this.id,"HARMFUL"))
   else
     GameTooltip:SetUnitDebuff(this:GetParent().label .. this:GetParent().id, this.id)
   end
@@ -153,25 +168,33 @@ end
 
 local function DebuffOnClick()
   if this:GetParent().label == "player" then
-    CancelPlayerBuff(GetPlayerBuff(PLAYER_BUFF_START_ID+this.id,"HARMFUL"))
+    CancelPlayerBuff(pfUI.api.GetPlayerBuffX(this.id,"HARMFUL"))
   end
 end
 
 local visibilityscan = CreateFrame("Frame", "pfUnitFrameVisibility", UIParent)
 visibilityscan.frames = {}
 visibilityscan:SetScript("OnUpdate", function()
-  if ( this.limit or 1) > GetTime() then return else this.limit = GetTime() + .2 end
-  for frame in pairs(this.frames) do frame:UpdateVisibility() end
+  local now = GetTime()
+  if (this.limit or 1) > now then
+    return
+  end
+
+  this.limit = now + .2
+  for frame in pairs(this.frames) do
+    frame:UpdateVisibility()
+  end
 end)
 
 local aggrodata = { }
 function pfUI.api.UnitHasAggro(unit)
-  if aggrodata[unit] and GetTime() < aggrodata[unit].check + 1 then
+  local now = GetTime()
+  if aggrodata[unit] and now < aggrodata[unit].check + 1 then
     return aggrodata[unit].state
   end
 
   aggrodata[unit] = aggrodata[unit] or { }
-  aggrodata[unit].check = GetTime()
+  aggrodata[unit].check = now
   aggrodata[unit].state = 0
 
   if UnitExists(unit) and UnitIsFriend(unit, "player") then
@@ -1075,11 +1098,13 @@ function pfUI.uf.OnUpdate()
   end
 
   -- trigger eventless actions (online/offline/range)
-  if not this.lastTick then this.lastTick = GetTime() + (this.tick or .2) end
-  if this.lastTick and this.lastTick < GetTime() then
+  local now = GetTime()
+  if not this.lastTick then this.lastTick = now + (this.tick or .2) end
+
+  if this.lastTick and this.lastTick < now then
     local unitstr = this.label .. this.id
 
-    this.lastTick = GetTime() + (this.tick or .2)
+    this.lastTick = now + (this.tick or .2)
 
     -- target target has a huge delay, make sure to not tick during range checks
     -- by waiting for a stable name over three ticks otherwise aborting the update.
@@ -1510,14 +1535,15 @@ function pfUI.uf:RefreshUnit(unit, component)
 
   -- buffs
   if unit.buffs and ( component == "all" or component == "aura" ) then
-    local texture, stacks
+    local texture, stacks, bid
 
     for i=1, unit.config.bufflimit do
       if not unit.buffs[i] then break end
 
       if unit.label == "player" then
-        stacks = GetPlayerBuffApplications(GetPlayerBuff(PLAYER_BUFF_START_ID+i,"HELPFUL"))
-        texture = GetPlayerBuffTexture(GetPlayerBuff(PLAYER_BUFF_START_ID+i,"HELPFUL"))
+        bid = pfUI.api.GetPlayerBuffX(i,"HELPFUL")
+        stacks = GetPlayerBuffApplications(bid)
+        texture = GetPlayerBuffTexture(bid)
       else
         texture, stacks = pfUI.uf:DetectBuff(unitstr, i)
       end
@@ -1577,10 +1603,11 @@ function pfUI.uf:RefreshUnit(unit, component)
       reposition = true
     end
 
+    local row, bid, now
     for i=1, unit.config.debufflimit do
       if not unit.debuffs[i] then break end
 
-      local row = floor((i-1) / unit.config.debuffperrow)
+      row = floor((i-1) / unit.config.debuffperrow)
 
       if reposition then
         local anchor = unit.config.portraitheight ~= "-1" and unit.hp or unit
@@ -1594,9 +1621,10 @@ function pfUI.uf:RefreshUnit(unit, component)
       end
 
       if unit.label == "player" then
-        texture = GetPlayerBuffTexture(GetPlayerBuff(PLAYER_BUFF_START_ID+i, "HARMFUL"))
-        stacks = GetPlayerBuffApplications(GetPlayerBuff(PLAYER_BUFF_START_ID+i, "HARMFUL"))
-        dtype = GetPlayerBuffDispelType(GetPlayerBuff(PLAYER_BUFF_START_ID+i, "HARMFUL"))
+        bid = pfUI.api.GetPlayerBuffX(i, "HARMFUL")
+        texture = GetPlayerBuffTexture(bid)
+        stacks = GetPlayerBuffApplications(bid)
+        dtype = GetPlayerBuffDispelType(bid)
       elseif selfdebuff == "1" then
         _, _, texture, stacks, dtype = libdebuff:UnitOwnDebuff(unitstr, i)
       else
@@ -1615,8 +1643,9 @@ function pfUI.uf:RefreshUnit(unit, component)
         unit.debuffs[i]:Show()
 
         if unit:GetName() == "pfPlayer" then
-          local timeleft = GetPlayerBuffTimeLeft(GetPlayerBuff(PLAYER_BUFF_START_ID+unit.debuffs[i].id, "HARMFUL"),"HARMFUL")
-          CooldownFrame_SetTimer(unit.debuffs[i].cd, GetTime(), timeleft, 1)
+          local timeleft = GetPlayerBuffTimeLeft(pfUI.api.GetPlayerBuffX(unit.debuffs[i].id, "HARMFUL"),"HARMFUL") 
+          now = now or GetTime()
+          CooldownFrame_SetTimer(unit.debuffs[i].cd, now, timeleft, 1)
         elseif libdebuff and selfdebuff == "1" then
           local name, rank, texture, stacks, dtype, duration, timeleft, caster = libdebuff:UnitOwnDebuff(unitstr, i)
           if duration and timeleft then
@@ -1625,7 +1654,8 @@ function pfUI.uf:RefreshUnit(unit, component)
         elseif libdebuff then
           local name, rank, texture, stacks, dtype, duration, timeleft, caster = libdebuff:UnitDebuff(unitstr, i)
           if duration and timeleft then
-            CooldownFrame_SetTimer(unit.debuffs[i].cd, GetTime() + timeleft - duration, duration, 1)
+            now = now or GetTime()
+            CooldownFrame_SetTimer(unit.debuffs[i].cd, now + timeleft - duration, duration, 1)
           end
         end
 
@@ -2038,34 +2068,35 @@ function pfUI.uf:EnableClickCast()
   for bid, button in pairs(buttons) do
     for modifier, mconf in pairs(modifiers) do
       local bconf = bid == 1 and "" or bid
-      if pfUI_config.unitframes["clickcast"..bconf..mconf] ~= "" then
+      local macro_text = pfUI_config.unitframes["clickcast"..bconf..mconf]
+      if macro_text ~= "" then
         -- prepare click casting
         if pfUI.client > 11200 then
           -- set attributes for tbc+
           local prefix = modifier == "" and "" or modifier .. "-"
 
           -- check for "/" in the beginning of the string, to detect macros
-          if string.find(pfUI_config.unitframes["clickcast"..bconf..mconf], "^%/(.+)") then
+          if string.sub(macro_text, 1, 1) == "/" then
             self:SetAttribute(prefix.."type"..bid, "macro")
-            self:SetAttribute(prefix.."macrotext"..bid, pfUI_config.unitframes["clickcast"..bconf..mconf])
+            self:SetAttribute(prefix.."macrotext"..bid, macro_text)
             self:SetAttribute(prefix.."spell"..bid, nil)
-          elseif string.find(pfUI_config.unitframes["clickcast"..bconf..mconf], "^target") then
+          elseif string.find(macro_text, "^target") then
             self:SetAttribute(prefix.."type"..bid, "target")
             self:SetAttribute(prefix.."macrotext"..bid, nil)
             self:SetAttribute(prefix.."spell"..bid, nil)
-          elseif string.find(pfUI_config.unitframes["clickcast"..bconf..mconf], "^menu") then
+          elseif string.find(macro_text, "^menu") then
             self:SetAttribute(prefix.."type"..bid, "showmenu")
             self:SetAttribute(prefix.."macrotext"..bid, nil)
             self:SetAttribute(prefix.."spell"..bid, nil)
           else
             self:SetAttribute(prefix.."type"..bid, "spell")
-            self:SetAttribute(prefix.."spell"..bid, pfUI_config.unitframes["clickcast"..bconf..mconf])
+            self:SetAttribute(prefix.."spell"..bid, macro_text)
             self:SetAttribute(prefix.."macro"..bid, nil)
           end
         else
           -- fill clickaction table for vanillla
           self.clickactions = self.clickactions or {}
-          self.clickactions[modifier..button] = pfUI_config.unitframes["clickcast"..bconf..mconf]
+          self.clickactions[modifier..button] = macro_text
         end
       end
     end
@@ -2103,7 +2134,7 @@ function pfUI.uf:ClickAction(button)
       showmenu = nil
     else
       -- run click cast action
-      local is_macro = string.find(this.clickactions[modstring], "^%/(.+)")
+      local is_macro = string.sub(this.clickactions[modstring], 1, 1) == "/"
 
       if superwow_active and not is_macro then
         CastSpellByName(this.clickactions[modstring], unitstr)

@@ -961,7 +961,13 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
     end
 
     -- setup page switch frame
+    local prowling = nil
     local pageswitch = CreateFrame("Frame", "pfActionBarPageSwitch", UIParent)
+    -- Check prowling only on buff change
+    pageswitch:RegisterEvent("PLAYER_AURAS_CHANGED")
+    pageswitch:SetScript("OnEvent", function()
+      prowling = IsCatStealth()
+    end)
     pageswitch:SetScript("OnUpdate", function()
       -- switch actionbar page depending on meta key that is pressed
       if C.bars.pagemastershift == "1" and IsShiftKeyDown() then
@@ -979,10 +985,9 @@ pfUI:RegisterModule("actionbar", "vanilla:tbc", function ()
 
       -- switch actionbar page if druid stealth is detected
       if C.bars.druidstealth == "1" then
-        local stealth = IsCatStealth()
-        if stealth and _G.CURRENT_ACTIONBAR_PAGE == 1 then
+        if prowling and _G.CURRENT_ACTIONBAR_PAGE == 1 then
           SwitchBar(prowl)
-        elseif not stealth and _G.CURRENT_ACTIONBAR_PAGE == 8 then
+        elseif not prowling and _G.CURRENT_ACTIONBAR_PAGE == 8 then
           SwitchBar(default)
         end
       end

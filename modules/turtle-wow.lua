@@ -40,6 +40,9 @@ pfUI:RegisterModule("turtle-wow", "vanilla", function ()
         if libdebuff.objects[name] and libdebuff.objects[name][level] and libdebuff.objects[name][level]["Rip"] then
           libdebuff:AddEffect(name, level, "Rip")
         end
+        if libdebuff.objects[name] and libdebuff.objects[name][level] and libdebuff.objects[name][level]["Rake"] then
+          libdebuff:AddEffect(name, level, "Rake")
+        end
       end
 
       -- refresh Immolate duration after cast Conflagrate

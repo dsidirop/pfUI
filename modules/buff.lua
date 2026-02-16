@@ -17,7 +17,7 @@ pfUI:RegisterModule("buff", "vanilla:tbc", function ()
     else
       buff.id = buff.gid
     end
-    buff.bid = pfUI.api.GetPlayerBuffX(buff.id, buff.btype)
+    buff.bid = GetPlayerBuff(PLAYER_BUFF_START_ID+buff.id, buff.btype)
 
     if not buff.backdrop then
       CreateBackdrop(buff)
@@ -76,8 +76,55 @@ pfUI:RegisterModule("buff", "vanilla:tbc", function ()
         buff.backdrop:SetBackdropBorderColor(br,bg,bb,ba)
       end
     else
-      buff:Hide()
-      return
+      -- Fallback: try UnitBuff/UnitDebuff API which may be more reliable in some cases
+      local fallbackTexture, fallbackStacks, fallbackDispelType, fallbackSpellId
+      local maxSlots = buff.btype == "HELPFUL" and 32 or 16
+
+      if buff.id >= 1 and buff.id <= maxSlots then
+        if buff.btype == "HELPFUL" and C.buffs.buffs == "1" then
+          for i = 1, maxSlots do
+            local tex, stacks, dtype, spellId = UnitBuff("player", i)
+            if tex and i == buff.id then
+              fallbackTexture, fallbackStacks, fallbackDispelType, fallbackSpellId = tex, stacks, dtype, spellId
+              break
+            end
+            if not tex then break end
+          end
+        elseif buff.btype == "HARMFUL" and C.buffs.debuffs == "1" then
+          for i = 1, maxSlots do
+            local tex, stacks, dtype, spellId = UnitDebuff("player", i)
+            if tex and i == buff.id then
+              fallbackTexture, fallbackStacks, fallbackDispelType, fallbackSpellId = tex, stacks, dtype, spellId
+              break
+            end
+            if not tex then break end
+          end
+        end
+      end
+
+      if fallbackTexture then
+        buff.mode = buff.btype
+        buff.fallbackSpellId = fallbackSpellId
+        buff.texture:SetTexture(fallbackTexture)
+        if buff.btype == "HARMFUL" then
+          if fallbackDispelType == "Magic" then
+            buff.backdrop:SetBackdropBorderColor(0,1,1,1)
+          elseif fallbackDispelType == "Poison" then
+            buff.backdrop:SetBackdropBorderColor(0,1,0,1)
+          elseif fallbackDispelType == "Curse" then
+            buff.backdrop:SetBackdropBorderColor(1,0,1,1)
+          elseif fallbackDispelType == "Disease" then
+            buff.backdrop:SetBackdropBorderColor(1,1,0,1)
+          else
+            buff.backdrop:SetBackdropBorderColor(1,0,0,1)
+          end
+        else
+          buff.backdrop:SetBackdropBorderColor(br,bg,bb,ba)
+        end
+      else
+        buff:Hide()
+        return
+      end
     end
 
     buff:Show()
@@ -119,31 +166,8 @@ pfUI:RegisterModule("buff", "vanilla:tbc", function ()
     buff.btype = btype
     buff.gid = i
 
-    buff:SetScript("OnUpdate", function()
-      local now = GetTime()
-      if not this.next then this.next = now + .1 end
-      if this.next > now then return end
-      this.next = now + .1
-
-      local timeleft = 0
-      local stacks = 0
-
-      if this.mode == this.btype then
-        timeleft = GetPlayerBuffTimeLeft(this.bid, this.btype)
-        stacks = GetPlayerBuffApplications(this.bid, this.btype)
-      elseif this.mode == "MAINHAND" then
-        local _, mhtime, mhcharge = GetWeaponEnchantInfo()
-        timeleft = mhtime/1000
-        stacks = mhcharge
-      elseif this.mode == "OFFHAND" then
-        local _, _, _, _, ohtime, ohcharge = GetWeaponEnchantInfo()
-        timeleft = ohtime/1000
-        stacks = ohcharge
-      end
-
-      this.timer:SetText(timeleft > 0 and GetColoredTimeString(timeleft) or "")
-      this.stacks:SetText(stacks > 1 and stacks or "")
-    end)
+    -- PERF: OnUpdate moved to consolidated parent frame handler (see pfUI.buff:SetScript("OnUpdate"))
+    -- Individual buff frames no longer have their own OnUpdate
 
     buff:SetScript("OnEnter", function()
       GameTooltip:SetOwner(this, "ANCHOR_BOTTOMRIGHT")
@@ -212,6 +236,19 @@ pfUI:RegisterModule("buff", "vanilla:tbc", function ()
     return buff
   end
 
+  local function GetNumBuffs()
+    local mh, mhtime, mhcharge, oh, ohtime, ohcharge = GetWeaponEnchantInfo()
+    local offset = (mh and 1 or 0) + (oh and 1 or 0)
+
+    for i=1,32 do
+      local bid, untilCancelled = GetPlayerBuff(PLAYER_BUFF_START_ID+i, "HELPFUL")
+      if bid < 0 then
+        return i - 1 + offset
+      end
+    end
+    return 0 + offset
+  end
+
   pfUI.buff = CreateFrame("Frame", "pfGlobalBuffFrame", UIParent)
   pfUI.buff:RegisterEvent("PLAYER_AURAS_CHANGED")
   pfUI.buff:RegisterEvent("UNIT_INVENTORY_CHANGED")
@@ -235,6 +272,71 @@ pfUI:RegisterModule("buff", "vanilla:tbc", function ()
     if C.buffs.separateweapons == "1" then
       for i=1,2 do
         RefreshBuffButton(pfUI.buff.wepbuffs.buttons[i])
+      end
+    end
+  end)
+
+  -- PERF: Consolidated OnUpdate handler for all buff timers
+  -- This replaces 50 individual OnUpdate handlers with a single one
+  pfUI.buff:SetScript("OnUpdate", function()
+    local now = GetTime()
+    if not this.nextUpdate then this.nextUpdate = now + 0.1 end
+    if this.nextUpdate > now then return end
+    this.nextUpdate = now + 0.1
+
+    -- Cache weapon enchant info once per update cycle
+    local mh, mhtime, mhcharge, oh, ohtime, ohcharge = GetWeaponEnchantInfo()
+
+    -- Update all visible buff buttons
+    local buttons = pfUI.buff.buffs.buttons
+    for i = 1, 32 do
+      local buff = buttons[i]
+      if buff:IsShown() then
+        local timeleft, stacks = 0, 0
+        if buff.mode == buff.btype then
+          timeleft = GetPlayerBuffTimeLeft(buff.bid, buff.btype)
+          stacks = GetPlayerBuffApplications(buff.bid, buff.btype)
+        elseif buff.mode == "MAINHAND" then
+          timeleft = mhtime and mhtime / 1000 or 0
+          stacks = mhcharge or 0
+        elseif buff.mode == "OFFHAND" then
+          timeleft = ohtime and ohtime / 1000 or 0
+          stacks = ohcharge or 0
+        end
+        buff.timer:SetText(timeleft > 0 and GetColoredTimeString(timeleft) or "")
+        buff.stacks:SetText(stacks > 1 and stacks or "")
+      end
+    end
+
+    -- Update all visible debuff buttons
+    buttons = pfUI.buff.debuffs.buttons
+    for i = 1, 16 do
+      local buff = buttons[i]
+      if buff:IsShown() then
+        local timeleft = GetPlayerBuffTimeLeft(buff.bid, buff.btype)
+        local stacks = GetPlayerBuffApplications(buff.bid, buff.btype)
+        buff.timer:SetText(timeleft > 0 and GetColoredTimeString(timeleft) or "")
+        buff.stacks:SetText(stacks > 1 and stacks or "")
+      end
+    end
+
+    -- Update weapon buff buttons if separate
+    if C.buffs.separateweapons == "1" then
+      buttons = pfUI.buff.wepbuffs.buttons
+      for i = 1, 2 do
+        local buff = buttons[i]
+        if buff:IsShown() then
+          local timeleft, stacks = 0, 0
+          if buff.mode == "MAINHAND" then
+            timeleft = mhtime and mhtime / 1000 or 0
+            stacks = mhcharge or 0
+          elseif buff.mode == "OFFHAND" then
+            timeleft = ohtime and ohtime / 1000 or 0
+            stacks = ohcharge or 0
+          end
+          buff.timer:SetText(timeleft > 0 and GetColoredTimeString(timeleft) or "")
+          buff.stacks:SetText(stacks > 1 and stacks or "")
+        end
       end
     end
   end)

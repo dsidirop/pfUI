@@ -50,6 +50,13 @@ pfUI:RegisterModule("mouseover", "vanilla", function ()
       end
     end
 
+    -- Nampower: CastSpellByName supports a second unit parameter directly.
+    -- unit is already resolved to "mouseover", "target" or "player" at this point.
+    if not func and GetNampowerVersion then
+      CastSpellByName(msg, unit)
+      return
+    end
+
     -- If target and mouseover are friendly units, we can't use spell target as it
     -- would cast on the target instead of the mouseover. However, if the mouseover
     -- is friendly and the target is not, we can try to obtain the best unitstring

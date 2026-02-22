@@ -20,9 +20,7 @@ if pfUI.client > 11200 then return end
 
 SLASH_PFFOCUS1, SLASH_PFFOCUS2 = '/focus', '/pffocus'
 function SlashCmdList.PFFOCUS(msg)
-  if not pfUI.uf or not pfUI.uf.focus then
-    return
-  end
+  if not pfUI.uf or not pfUI.uf.focus then return end
 
   if msg ~= nil and type(msg) ~= "string" then
     UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1, 0, 0)
@@ -31,7 +29,9 @@ function SlashCmdList.PFFOCUS(msg)
 
   local _, guid = nil, nil -- try guid-based focus (turtle wow native)
 
-  if type(msg) == "string" and msg ~= "" then
+  if msg == "" then
+    _, guid = UnitExists("target")
+  else    
     local _, guidOriginal = UnitExists("target")
 
     TargetByName(msg, true)
@@ -41,36 +41,30 @@ function SlashCmdList.PFFOCUS(msg)
     if guidOriginal ~= guid then
       TargetLastTarget()
     end
-
-  else
-    _, guid = UnitExists("target")
   end
 
   if guid == "0x0000000000000000" then -- normalize the guid
     guid = nil
   end
-  
-  if guid then
-    -- GUID-based focus (works with unitframes API)
-    pfUI.uf.focus.unitname = nil
-    pfUI.uf.focus.label = guid
-    pfUI.uf.focus.id = ""
 
-    -- Update focustarget frame
-    if pfUI.uf.focustarget then
-      pfUI.uf.focustarget.unitname = nil
+  if guid then
+    pfUI.uf.focus.id = "" -- guid-based focus (works with unitframes api)
+    pfUI.uf.focus.unitname = nil
+
+    if pfUI.uf.focustarget then -- update focustarget frame
       pfUI.uf.focustarget.label = guid .. "target"
-      pfUI.uf.focustarget.id = ""
     end
 
-  elseif msg == "" and not guid then
-    -- No target and no msg - clear focus
+  elseif msg == "" then -- no target and no msg - clear focus
     local unitName = UnitName("target")
     if unitName then
-      pfUI.uf.focus.unitname = strlower(unitName)
-    else
-      pfUI.uf.focus.unitname = nil
+      pfUI.uf.focus.id = ""
       pfUI.uf.focus.label = nil
+      pfUI.uf.focus.unitname = strlower(unitName)
+    else -- if there is no target currently selected then clear focus completely
+      pfUI.uf.focus.id = nil
+      pfUI.uf.focus.label = nil
+      pfUI.uf.focus.unitname = nil
     end
   end
 end

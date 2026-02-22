@@ -97,7 +97,7 @@ function SlashCmdList.PFFOCUS(desiredTarget)
   -- legacy mechanism  without nampower
   local unitName = UnitName(desiredTarget == "" and "target" or desiredTarget)
   if unitName then
-    SetFocusByName(name)
+    SetFocusByName(unitName)
   end
 end
 
@@ -123,8 +123,9 @@ local function ProperFocusCast(properCastSpell, msg)
   end
 
   local func = pfUI.api.TryMemoizedFuncLoadstringForSpellCasts(msg)
-  local hasGUID = focusGUID and focusGUID ~= "" and focusGUID ~= "0x0000000000000000"
   local focusGUID = pfUI.uf.focus.label
+
+  local hasGUID = focusGUID and focusGUID ~= "" and focusGUID ~= "0x0000000000000000"
 
   -- guid-based cast (nampower) - no target toggle needed
   if hasGUID and not func then
@@ -140,8 +141,7 @@ local function ProperFocusCast(properCastSpell, msg)
     TargetUnit(focusGUID)
     local _, newGUID = UnitExists("target")
 
-    if newGUID ~= focusGUID then
-      -- could not target focus, restore and fail
+    if newGUID ~= focusGUID then -- could not target focus, restore and fail
       if currentGUID and currentGUID ~= "0x0000000000000000" then
         TargetUnit(currentGUID)
       elseif isPlayer then

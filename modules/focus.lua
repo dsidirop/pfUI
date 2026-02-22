@@ -116,11 +116,7 @@ function SlashCmdList.PFCLEARFOCUS()
   end
 end
 
--- will deliberately prefer CastSpellByNameNoQueue if available as it
--- clearly is the most desirable behaviour for practical focus-casting-scenarios
--- (insta-casting counterspells and interrupts in high-intensity pve/pvp situations)
-SLASH_PFCASTFOCUS1, SLASH_PFCASTFOCUS2 = '/castfocus', '/pfcastfocus'
-function SlashCmdList.PFCASTFOCUS(msg)
+local function ProperFocusCast(properCastSpell, msg)
   if not pfUI.uf.focus or not pfUI.uf.focus:IsShown() then
     UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1, 0, 0)
     return
@@ -129,7 +125,6 @@ function SlashCmdList.PFCASTFOCUS(msg)
   local func = pfUI.api.TryMemoizedFuncLoadstringForSpellCasts(msg)
   local hasGUID = focusGUID and focusGUID ~= "" and focusGUID ~= "0x0000000000000000"
   local focusGUID = pfUI.uf.focus.label
-  local properCastSpell = CastSpellByNameNoQueue or CastSpellByName
 
   -- guid-based cast (nampower) - no target toggle needed
   if hasGUID and not func then
@@ -168,7 +163,6 @@ function SlashCmdList.PFCASTFOCUS(msg)
     else
       TargetLastTarget()
     end
-    return
   end
 
   -- fallback: name-based target swap (no nampower / no guid)
@@ -179,8 +173,8 @@ function SlashCmdList.PFCASTFOCUS(msg)
   local skiptarget = false
 
   if focusLabel and focusId and
-     UnitIsUnit("target", focusLabel .. focusId) then
-     skiptarget = true
+    UnitIsUnit("target", focusLabel .. focusId) then
+    skiptarget = true
   else
     pfScanActive = true
     if focusGUID and focusId then
@@ -213,6 +207,28 @@ function SlashCmdList.PFCASTFOCUS(msg)
       TargetLastTarget()
     end
   end
+end
+
+-- will deliberately prefer using CastSpellByNameNoQueue if available   the no-queue
+-- behaviour forces a spell cast to never queue to avoid nasty unnecessary overhead
+-- (even if your settings would normally queue)   this clearly is the most reasonable
+-- default behaviour for practical focus-casting-scenarios in high-intensity situations
+-- 
+-- if you prefer to allow queueing for focus-casts you can use the /standardcastfocus command
+-- which uses the regular CastSpellByName and thus respects the users global queueing settings
+--
+-- for insta-cast use-cases you might want to consider invoking /run SpellStopCasting() first 
+SLASH_PFCASTFOCUS1, SLASH_PFCASTFOCUS2 = '/castfocus', '/pfcastfocus'
+function SlashCmdList.PFCASTFOCUS(msg)
+  ProperFocusCast(CastSpellByNameNoQueue or CastSpellByName, msg)
+end
+
+-- this flavour of focus-casting uses the traditional CastSpellByName which by default doesnt
+-- use queueing (unless the user changes the associated setting globally to force it to) use this
+-- flavor when you are sure you dont want to interrupt any current spell being cast before the focus-cast
+SLASH_PFSTANDARDCASTFOCUS1, SLASH_PFSTANDARDCASTFOCUS2 = '/standardcastfocus', '/pfstandardcastfocus'
+function SlashCmdList.PFSTANDARDCASTFOCUS(msg)
+  ProperFocusCast(CastSpellByName, msg)
 end
 
 SLASH_PFSWAPFOCUS1, SLASH_PFSWAPFOCUS2 = '/swapfocus', '/pfswapfocus'

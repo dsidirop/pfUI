@@ -20,67 +20,63 @@ if pfUI.client > 11200 then return end
 
 SLASH_PFFOCUS1, SLASH_PFFOCUS2 = '/focus', '/pffocus'
 function SlashCmdList.PFFOCUS(msg)
-    if not pfUI.uf or not pfUI.uf.focus then return end
+  if not pfUI.uf or not pfUI.uf.focus then
+    return
+  end
 
-    if msg ~= nil and type(msg) ~= "string" then
-        UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1, 0, 0)
-        return
+  if msg ~= nil and type(msg) ~= "string" then
+    UIErrorsFrame:AddMessage(SPELL_FAILED_BAD_TARGETS, 1, 0, 0)
+    return
+  end
+
+  local _, guid = nil, nil -- try guid-based focus (turtle wow native)
+
+  if type(msg) == "string" and msg ~= "" then
+    local _, guidOriginal = UnitExists("target")
+
+    TargetByName(msg, true)
+
+    _, guid = UnitExists("target")
+
+    if guidOriginal ~= guid then
+      TargetLastTarget()
     end
 
-    -- try guid-based focus (turtle wow native)
-    local _, guid = nil, nil
+  else
+    _, guid = UnitExists("target")
+  end
 
-    if UnitExists then
-        if type(msg) == "string" and msg ~= "" then
-            local _, guidOriginal = UnitExists("target")
+  if guid == "0x0000000000000000" then -- normalize the guid
+    guid = nil
+  end
+  
+  if guid then
+    -- GUID-based focus (works with unitframes API)
+    pfUI.uf.focus.unitname = nil
+    pfUI.uf.focus.label = guid
+    pfUI.uf.focus.id = ""
 
-            TargetByName(msg, true)
-
-            _, guid = UnitExists("target")
-
-            if guidOriginal ~= guid then
-                TargetLastTarget()
-            end
-
-        else
-            if msg ~= "" then
-                -- When msg is provided, we need to target by name first to get GUID
-                -- Save this for later - for now just use name-based
-                pfUI.uf.focus.unitname = strlower(msg)
-                pfUI.uf.focus.label = nil
-                pfUI.uf.focus.id = nil
-            else
-                -- Get GUID from current target
-                _, guid = UnitExists("target")
-            end
-        end
+    -- Update focustarget frame
+    if pfUI.uf.focustarget then
+      pfUI.uf.focustarget.unitname = nil
+      pfUI.uf.focustarget.label = guid .. "target"
+      pfUI.uf.focustarget.id = ""
     end
 
-    if guid then
-        -- GUID-based focus (works with unitframes API)
-        pfUI.uf.focus.unitname = nil
-        pfUI.uf.focus.label = guid
-        pfUI.uf.focus.id = ""
-
-        -- Update focustarget frame
-        if pfUI.uf.focustarget then
-            pfUI.uf.focustarget.unitname = nil
-            pfUI.uf.focustarget.label = guid .. "target"
-            pfUI.uf.focustarget.id = ""
-        end
-    elseif msg == "" and not guid then
-        -- No target and no msg - clear focus
-        if UnitName("target") then
-            pfUI.uf.focus.unitname = strlower(UnitName("target"))
-        else
-            pfUI.uf.focus.unitname = nil
-            pfUI.uf.focus.label = nil
-        end
+  elseif msg == "" and not guid then
+    -- No target and no msg - clear focus
+    local unitName = UnitName("target")
+    if unitName then
+      pfUI.uf.focus.unitname = strlower(unitName)
+    else
+      pfUI.uf.focus.unitname = nil
+      pfUI.uf.focus.label = nil
     end
+  end
 end
 
 SLASH_PFCLEARFOCUS1, SLASH_PFCLEARFOCUS2 = '/clearfocus', '/pfclearfocus'
-function SlashCmdList.PFCLEARFOCUS(msg)
+function SlashCmdList.PFCLEARFOCUS()
   if pfUI.uf and pfUI.uf.focus then
     pfUI.uf.focus.unitname = nil
     pfUI.uf.focus.label = nil

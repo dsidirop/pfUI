@@ -162,7 +162,7 @@ GetHotDuration(unit, spell):
 
 Extended `Hot()` function signature to include rank parameter:
 ```lua
-function libpredict:Hot(sender, target, spell, duration, startTime, source, rank)
+libpredict:Hot(sender, target, spell, duration, startTime, source, rank)
 ```
 
 **Rank Protection Logic:**
@@ -1381,21 +1381,22 @@ Use `/pfdll` in-game to check which DLLs are detected.
 
 ## Commands
 
-    /pfui         Open the configuration GUI
-    /pfdll        Show DLL detection status (SuperWoW, Nampower, UnitXP)
-    /pfbehind     Test Behind/LOS detection on current target
-    /clickthrough Toggle clickthrough mode (or /ct)
-    /share        Open the configuration import/export dialog
-    /gm           Open the ticket Dialog
-    /rl           Reload the whole UI
-    /farm         Toggles the Farm-Mode
-    /pfcast       Same as /cast but for mouseover units
-    /focus        Creates a Focus-Frame for the current target
-    /castfocus    Same as /cast but for focus frame
-    /clearfocus   Clears the Focus-Frame
-    /swapfocus    Toggle Focus and Target-Frame
-    /pftest       Toggle pfUI Unitframe Test Mode
-    /abp          Addon Button Panel
+    /pfui                    Open the configuration GUI
+    /pfdll                   Show DLL detection status (SuperWoW, Nampower, UnitXP)
+    /pfbehind                Test Behind/LOS detection on current target
+    /clickthrough            Toggle clickthrough mode (or /ct)
+    /share                   Open the configuration import/export dialog
+    /gm                      Open the ticket Dialog
+    /rl                      Reload the whole UI
+    /farm                    Toggles the Farm-Mode
+    /pfcast                  Same as /cast but for mouseover units
+    /focus                   Creates a Focus-Frame for the current target
+    /castfocus               Same as /cast but for focus frame; Forces no-queue-casting thus overriding your global queue-casting settings
+    /standardcastfocus       Same as /cast but for focus frame; Employs standard-casting and respects your global queue-casting settings
+    /clearfocus              Clears the Focus-Frame
+    /swapfocus               Toggle Focus and Target-Frame
+    /pftest                  Toggle pfUI Unitframe Test Mode
+    /abp                     Addon Button Panel
 
 ## Languages
 pfUI supports and contains language specific code for the following gameclients.

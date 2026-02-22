@@ -82,8 +82,7 @@ function SlashCmdList.PFFOCUS(desiredTarget)
       end
     end
 
-    if guid == "0x0000000000000000" then
-      -- normalize the guid in all cases
+    if guid == "0x0000000000000000" then -- normalize the guid in all cases
       guid = nil
     end
 

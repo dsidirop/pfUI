@@ -36,7 +36,6 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
   local sw_showoh     = C.unitframes.swingtimeroffhand ~= "0"
   local sw_showranged = C.unitframes.swingtimerranged ~= "0"
   local sw_fontsize   = tonumber(C.unitframes.swingtimerfontsize) or 12
-  local isHunter = UnitClass("player") == "Hunter"
   local sw_hsqueue   = C.unitframes.swingtimerhsqueue ~= "0"
 
   -- Parse color strings "r,g,b,a" into components
@@ -53,6 +52,7 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
   local ohR, ohG, ohB, ohA = ParseColor(C.unitframes.swingtimerohcolor, 0.3, 0.8, 0.3, 1)
   local raR, raG, raB, raA = ParseColor(C.unitframes.swingtimerrangedcolor, 0.3, 0.6, 1.0, 1)
   local rwR, rwG, rwB, rwA = ParseColor(C.unitframes.swingtimerrangedwarncolor, 0.9, 0.0, 0.0, 1)
+  local isHunter = UnitClass("player") == "Hunter"
 
   -- Store default MH color for HS/Cleave restore
   local mhDefaultR, mhDefaultG, mhDefaultB = mhR, mhG, mhB
@@ -112,15 +112,40 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
   CreateBackdropShadow(pfUI.swingtimer.offhand)
 
   -- Ranged bar (bow/gun/crossbow - triggered by SPELL_GO_SELF for Auto Shot / Throw)
-  pfUI.swingtimer.ranged = CreateFrame("StatusBar", "pfSwingTimerRanged", UIParent)
-  pfUI.swingtimer.ranged:SetPoint("TOP", pfUI.swingtimer.offhand, "BOTTOM", 0, -4)
+  -- Hunter uses a special "close from outside->in, open inside->out" animation
+  -- instead of a normal left->right StatusBar fill.
+  pfUI.swingtimer.ranged = CreateFrame("Frame", "pfSwingTimerRanged", UIParent)
+  pfUI.swingtimer.ranged:SetPoint("CENTER", UIParent, "CENTER", 0, -120)
   pfUI.swingtimer.ranged:SetWidth(sw_width)
   pfUI.swingtimer.ranged:SetHeight(sw_height)
-  pfUI.swingtimer.ranged:SetMinMaxValues(0, 1)
-  pfUI.swingtimer.ranged:SetValue(0)
-  pfUI.swingtimer.ranged:SetStatusBarTexture(sw_texture)
-  pfUI.swingtimer.ranged:SetStatusBarColor(raR, raG, raB, raA)
   pfUI.swingtimer.ranged:Hide()
+
+  -- Phase 1: left half, anchored to CENTER (right edge fixed), shrinks leftward = outside->in
+  pfUI.swingtimer.ranged.left = pfUI.swingtimer.ranged:CreateTexture(nil, "ARTWORK")
+  pfUI.swingtimer.ranged.left:SetTexture(sw_texture)
+  pfUI.swingtimer.ranged.left:SetPoint("RIGHT", pfUI.swingtimer.ranged, "CENTER", 0, 0)
+  pfUI.swingtimer.ranged.left:SetHeight(sw_height)
+  pfUI.swingtimer.ranged.left:SetWidth(sw_width / 2)
+  pfUI.swingtimer.ranged.left:SetTexCoord(0, 0.5, 0, 1)
+  pfUI.swingtimer.ranged.left:SetVertexColor(raR, raG, raB, raA)
+
+  -- Phase 1: right half, anchored to CENTER (left edge fixed), shrinks rightward = outside->in
+  pfUI.swingtimer.ranged.right = pfUI.swingtimer.ranged:CreateTexture(nil, "ARTWORK")
+  pfUI.swingtimer.ranged.right:SetTexture(sw_texture)
+  pfUI.swingtimer.ranged.right:SetPoint("LEFT", pfUI.swingtimer.ranged, "CENTER", 0, 0)
+  pfUI.swingtimer.ranged.right:SetHeight(sw_height)
+  pfUI.swingtimer.ranged.right:SetWidth(sw_width / 2)
+  pfUI.swingtimer.ranged.right:SetTexCoord(0.5, 1, 0, 1)
+  pfUI.swingtimer.ranged.right:SetVertexColor(raR, raG, raB, raA)
+
+  -- Phase 2: warning color, anchored CENTER, grows outward
+  pfUI.swingtimer.ranged.warn = pfUI.swingtimer.ranged:CreateTexture(nil, "ARTWORK")
+  pfUI.swingtimer.ranged.warn:SetTexture(sw_texture)
+  pfUI.swingtimer.ranged.warn:SetPoint("CENTER", pfUI.swingtimer.ranged, "CENTER", 0, 0)
+  pfUI.swingtimer.ranged.warn:SetHeight(sw_height)
+  pfUI.swingtimer.ranged.warn:SetWidth(1)
+  pfUI.swingtimer.ranged.warn:SetVertexColor(rwR, rwG, rwB, rwA)
+  pfUI.swingtimer.ranged.warn:Hide()
 
   pfUI.swingtimer.ranged.text = pfUI.swingtimer.ranged:CreateFontString("Status", "DIALOG", "GameFontNormal")
   pfUI.swingtimer.ranged.text:SetPoint("CENTER", pfUI.swingtimer.ranged, "CENTER", 0, 0)
@@ -203,12 +228,31 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
   end
 
   UpdateMovable(pfUI.swingtimer.mainhand)
+  UpdateMovable(pfUI.swingtimer.ranged)
 
   -- VERSION B TEST: HasOffhandWeapon() removed.
   -- The original used GetItemInfo() to detect OH weapon type, but GetItemInfo()
   -- returns nil on first login before the item cache is populated, causing
   -- offhand.speed to stay 0. Now we just read offhandAttackTime directly,
   -- same as the old working version.
+  -- Check offhand slot for an actual weapon. GetItemInfo may return nil on first
+  -- login (item cache not yet populated), so we return nil in that case to signal
+  -- "unknown" rather than false, allowing the caller to keep the previous value.
+  -- inventoryType 13 = INVTYPE_WEAPONOFFHAND, 21 = INVTYPE_WEAPON (one-hand, dual wieldable)
+  -- Shields = 14, held-in-hand = 23, everything else = no swing
+  local OH_WEAPON_TYPES = { [13]=true, [21]=true }
+
+  local function HasOffhandWeapon()
+    local l = GetInventoryItemLink("player", 17)
+    if not l then return false end
+    local _, _, id = string.find(l, "item:(%d+)")
+    id = tonumber(id)
+    if not id then return false end
+    local s = GetItemStats and GetItemStats(id)
+    if not s then return false end
+    return OH_WEAPON_TYPES[s.inventoryType] == true
+  end
+
   local function UpdateWeaponSpeeds()
     if not GetUnitField then return end
 
@@ -219,7 +263,7 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
       swingState.mainhand.speed = mhSpeed / 1000
     end
 
-    if ohSpeed and ohSpeed > 0 then
+    if HasOffhandWeapon() and ohSpeed and ohSpeed > 0 then
       swingState.offhand.speed = ohSpeed / 1000
     else
       swingState.offhand.speed = 0
@@ -265,15 +309,44 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
     if not sw_showranged then return end
     UpdateWeaponSpeeds()
     if swingState.ranged.speed <= 0 then return end
+    -- Ranged replaces MH: cancel mainhand swing
     swingState.mainhand.swinging = false
     pfUI.swingtimer.mainhand:Hide()
     swingState.ranged.nextSwing = GetTime() + swingState.ranged.speed
     swingState.ranged.swinging  = true
+
+    if isHunter then
+      -- Hunter: left/right halves anchored to CENTER, shrink outside->in
+      pfUI.swingtimer.ranged.left:ClearAllPoints()
+      pfUI.swingtimer.ranged.left:SetPoint("RIGHT", pfUI.swingtimer.ranged, "CENTER", 0, 0)
+      pfUI.swingtimer.ranged.left:SetWidth(sw_width / 2)
+      pfUI.swingtimer.ranged.left:SetTexCoord(0, 0.5, 0, 1)
+      pfUI.swingtimer.ranged.right:SetWidth(sw_width / 2)
+      pfUI.swingtimer.ranged.right:SetTexCoord(0.5, 1, 0, 1)
+    else
+      -- Non-Hunter: left anchored to TOPLEFT, grows left->right like MH/OH
+      pfUI.swingtimer.ranged.left:ClearAllPoints()
+      pfUI.swingtimer.ranged.left:SetPoint("TOPLEFT", pfUI.swingtimer.ranged, "TOPLEFT", 0, 0)
+      pfUI.swingtimer.ranged.left:SetWidth(0.1)
+      pfUI.swingtimer.ranged.left:Hide()
+      pfUI.swingtimer.ranged.left:SetTexCoord(0, 0, 0, 1)
+      pfUI.swingtimer.ranged.right:SetWidth(0.1)
+      pfUI.swingtimer.ranged.right:Hide()
+    end
+
+    pfUI.swingtimer.ranged.left:SetVertexColor(raR, raG, raB, raA)
+    pfUI.swingtimer.ranged.right:SetVertexColor(raR, raG, raB, raA)
+    pfUI.swingtimer.ranged.warn:SetWidth(1)
+    pfUI.swingtimer.ranged.warn:Hide()
     pfUI.swingtimer.ranged:Show()
     pfUI.swingtimer:Show()
   end
 
+  local swingThrottle = 0
   pfUI.swingtimer:SetScript("OnUpdate", function()
+    swingThrottle = swingThrottle + arg1
+    if swingThrottle < 0.016 then return end
+    swingThrottle = 0
     local now = GetTime()
     local anyActive = false
 
@@ -329,17 +402,59 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
         swingState.ranged.swinging = false
         pfUI.swingtimer.ranged:Hide()
       else
-        local progress = 1 - (remaining / swingState.ranged.speed)
-        pfUI.swingtimer.ranged:SetValue(progress)
         if isHunter then
-          if remaining < 0.5 then
-            pfUI.swingtimer.ranged:SetStatusBarColor(rwR, rwG, rwB, rwA)
+          -- Hunter ranged animation: two phases
+          -- Phase 1 (speed-0.5s): bar visible full, shrinks from outside->in toward center (normal color)
+          -- Phase 2 (0.5s):       bar grows from center outward (warning color)
+          local DEADZONE = 0.5
+          local halfW = sw_width / 2
+
+          if remaining > DEADZONE then
+            -- Phase 1: left/right halves shrink from outside->in toward center
+            local elapsed = swingState.ranged.speed - remaining
+            local phase1dur = swingState.ranged.speed - DEADZONE
+            local p = elapsed / phase1dur  -- 0 = full, 1 = gone
+            local w = halfW * (1 - p)
+            if w < 1 then w = 1 end
+            pfUI.swingtimer.ranged.left:Show()
+            pfUI.swingtimer.ranged.left:SetWidth(w)
+            pfUI.swingtimer.ranged.left:SetTexCoord(0, (1 - p) * 0.5, 0, 1)
+            pfUI.swingtimer.ranged.left:SetVertexColor(raR, raG, raB, raA)
+            pfUI.swingtimer.ranged.right:Show()
+            pfUI.swingtimer.ranged.right:SetWidth(w)
+            pfUI.swingtimer.ranged.right:SetTexCoord(1 - (1 - p) * 0.5, 1, 0, 1)
+            pfUI.swingtimer.ranged.right:SetVertexColor(raR, raG, raB, raA)
+            pfUI.swingtimer.ranged.warn:Hide()
           else
-            pfUI.swingtimer.ranged:SetStatusBarColor(raR, raG, raB, raA)
+            -- Phase 2: warning color grows from center->outside
+            local p = 1 - (remaining / DEADZONE)  -- 0 = nothing, 1 = full
+            local w = sw_width * p
+            if w < 1 then w = 1 end
+            pfUI.swingtimer.ranged.left:Hide()
+            pfUI.swingtimer.ranged.right:Hide()
+            pfUI.swingtimer.ranged.warn:SetWidth(w)
+            pfUI.swingtimer.ranged.warn:Show()
           end
+        else
+          -- Non-Hunter (Warrior Throw, Rogue): simple left->right fill like MH/OH
+          local progress = 1 - (remaining / swingState.ranged.speed)
+          local w = sw_width * progress
+          if w < 1 then w = 1 end
+          pfUI.swingtimer.ranged.left:Show()
+          pfUI.swingtimer.ranged.left:SetWidth(w)
+          pfUI.swingtimer.ranged.left:SetTexCoord(0, progress, 0, 1)
+          pfUI.swingtimer.ranged.right:Hide()
+          pfUI.swingtimer.ranged.warn:Hide()
         end
         if sw_showtext then
-          pfUI.swingtimer.ranged.text:SetText(string.format("%.1f", remaining))
+          if isHunter and remaining <= 0.5 then
+            pfUI.swingtimer.ranged.text:SetText(string.format("%.1f", remaining))
+          elseif isHunter then
+            -- Show time until deadzone starts, not full remaining
+            pfUI.swingtimer.ranged.text:SetText(string.format("%.1f", remaining - 0.5))
+          else
+            pfUI.swingtimer.ranged.text:SetText(string.format("%.1f", remaining))
+          end
         end
         anyActive = true
       end
@@ -423,7 +538,8 @@ pfUI:RegisterModule("swingtimer", "vanilla:tbc", function ()
     elseif event == "PLAYER_ENTERING_WORLD" then
       local _, class = UnitClass("player")
       isWarrior  = (class == "WARRIOR")
-      playerGUID = UnitExists("player")
+      local _, guid = UnitExists("player")
+      playerGUID = guid
       UpdateWeaponSpeeds()
       RebuildQueueSlotCache()
 

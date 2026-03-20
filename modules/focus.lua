@@ -171,8 +171,9 @@ local function ProperFocusCast(properCastSpell, msg)
   local unitname = ""
   local skiptarget = false
 
-  if focusLabel and focusId and
-    UnitIsUnit("target", focusLabel .. focusId) then
+  if focusLabel
+      and focusId
+      and UnitIsUnit("target", focusLabel .. focusId) then
     skiptarget = true
   else
     pfScanActive = true

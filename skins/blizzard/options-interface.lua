@@ -75,6 +75,8 @@ pfUI:RegisterSkin("Options - Interface", "tbc", function ()
 end)
 
 pfUI:RegisterSkin("Options - Interface", "vanilla", function ()
+  if not UIOptionsFrame then return end
+  
   local rawborder, border = GetBorderSize()
   local bpad = rawborder > 1 and border - GetPerfectPixel() or GetPerfectPixel()
 

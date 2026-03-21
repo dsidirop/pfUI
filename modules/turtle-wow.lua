@@ -2,6 +2,44 @@
 if not TargetHPText or not TargetHPPercText then return end
 
 pfUI:RegisterModule("turtle-wow", "vanilla", function ()
+  -- Turtle WoW's new RaidFrame.lua uses GROUP_REPLACE_PARTY to decide whether to
+  -- call ShowPartyFrame(). Since pfUI replaces party frames, always set this so
+  -- RaidOptionsFrame_UpdatePartyFrames never tries to restore the Blizzard frames.
+  if C.unitframes.disable ~= "1" then
+    GROUP_REPLACE_PARTY = "1"
+  end
+
+  -- hide Turtle WoW's new compact GroupFrame (GroupClusterFrame1-8) when pfUI
+  -- unitframes are active, since pfUI has its own party/raid frames
+  if C.unitframes.disable ~= "1" then
+    HookAddonOrVariable("GroupFrame", function()
+      local function HideGroupFrames()
+        if GroupFrame then
+          GroupFrame:Hide()
+          GroupFrame.Show = function() return end
+        end
+        for i = 1, 8 do
+          local f = _G["GroupClusterFrame"..i]
+          if f then
+            f:Hide()
+            f.Show = function() return end
+          end
+        end
+        if GroupPetsClusterFrame then
+          GroupPetsClusterFrame:Hide()
+          GroupPetsClusterFrame.Show = function() return end
+        end
+      end
+
+      HideGroupFrames()
+
+      -- GroupFrame_Update shows the cluster frames on every raid/party update
+      if GroupFrame_Update then
+        hooksecurefunc("GroupFrame_Update", HideGroupFrames)
+      end
+    end)
+  end
+
   -- custom debuff durations
   L["debuffs"]["Hand of Reckoning"] = {[0]=3.0}
   L["debuffs"]['Insect Swarm'] = {[0]=18.0}

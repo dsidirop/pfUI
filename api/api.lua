@@ -142,13 +142,30 @@ end
 -- unit         [string]        A unit to query (string, unitID)
 -- return:      [bool]          "1" if in range otherwise "nil"
 function pfUI.api.UnitInRange(unit)
-    if not UnitExists(unit) or not UnitIsVisible(unit) then
-        return nil
-    elseif CheckInteractDistance(unit, 4) then
-        return 1
-    else
-        return librange:UnitInSpellRange(unit)
+  if not UnitExists(unit) or not UnitIsVisible(unit) then
+    return nil
+  end
+
+  if CheckInteractDistance(unit, 4) then
+    return 1
+  end
+
+  -- UnitXP precise mode: skip librange entirely, use direct distance check
+  if _G.UnitXP and C.unitframes.rangecheck_mode == "unitxp" then
+    local success, distance = pcall(_G.UnitXP, "distanceBetween", "player", unit)
+    if success and distance then
+      return distance <= (tonumber(C.unitframes.rangecheck_distance) or 40)
+          and 1
+          or nil
     end
+    -- fallthrough to librange if UnitXP fails
+  end
+
+  if pfUI.api.librange then
+    return pfUI.api.librange:UnitInSpellRange(unit)
+  end
+
+  return nil
 end
 
 -- [ RunOOC ]
@@ -1451,7 +1468,7 @@ end
 -- return r,g,b and hexcolor
 local gradientcolors = {}
 function pfUI.api.GetColorGradient(perc)
-    perc = perc > 1 and 1 or perc
+    if not perc or perc ~= perc then perc = 0 end -- NaN guard: NaN ~= NaN is true in Luaperc = perc > 1 and 1 or perc
     perc = perc < 0 and 0 or perc
     perc = floor(perc * 100) / 100
 
@@ -1499,7 +1516,8 @@ function pfUI.api.GetNoNameObject(frame, objtype, layer, arg1, arg2)
     local arg2 = arg2 and gsub(arg2, "([%+%-%*%(%)%?%[%]%^])", "%%%1")
 
     local objects
-    if objtype == "Texture" or objtype == "FontString" then
+    if not frame or not frame.GetRegions then return end
+  if objtype == "Texture" or objtype == "FontString" then
         objects = { frame:GetRegions() }
     else
         objects = { frame:GetChildren() }

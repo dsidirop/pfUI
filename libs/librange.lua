@@ -1,8 +1,6 @@
 -- load pfUI environment
 setfenv(1, pfUI:GetEnvironment())
 
-local superwow_active = HasSuperWoW()
-
 --[[ librange ]]--
 -- A pfUI library that detects and caches distance to units.
 --
@@ -43,10 +41,11 @@ local spells = {
 
 -- Use Nampower's IsSpellInRange if available (vanilla only)
 -- This provides more accurate range checking without needing to find spell slots
-local nampower_spell
 if GetNampowerVersion then
   librange:RegisterEvent("LEARNED_SPELL_IN_TAB")
   librange:RegisterEvent("PLAYER_ENTERING_WORLD")
+
+  local nampower_spell
   librange:SetScript("OnEvent", function()
     -- abort on non healing classes
     if not spells[class] then return end
@@ -56,13 +55,12 @@ if GetNampowerVersion then
     for i = 1, GetNumSpellTabs() do
       local _, _, offset, num = GetSpellTabInfo(i)
       for id = offset + 1, offset + num do
-        local name, rank = GetSpellName(id, BOOKTYPE_SPELL)
         local texture = GetSpellTexture(id, BOOKTYPE_SPELL)
-
         if texture then
           for _, tex in pairs(spells[class]) do
             if tex == texture then
-              nampower_spell = name
+              nampower_spell = GetSpellName(id, BOOKTYPE_SPELL)
+              break
             end
           end
         end
@@ -191,13 +189,14 @@ librange:SetScript("OnUpdate", function()
         return UnitXP("distanceBetween", "player", unit)
       end)
       if unitxp_success and unitxp_distance then
-        unitdata[unit] = unitxp_distance < 45 and 1 or 0
+        local threshold = (tonumber(C.unitframes.rangecheck_distance) or 40) + 5
+        unitdata[unit] = unitxp_distance < threshold and 1 or 0
         this.id = this.id + 1
         return
       end
 
       -- try to read distance via superwow second
-      if superwow_active then
+      if HasSuperWoW() and UnitPosition then
         local x1, y1, z1 = UnitPosition("player")
         local x2, y2, z2 = UnitPosition(unit)
         -- only continue if we got position values
@@ -305,7 +304,7 @@ function librange:UnitInSpellRange(unit)
     return IsActionInRange(librange.slot) == 1 and 1 or nil
   end
 
-  local unit = librange:GetRealUnit(unit)
+  unit = librange:GetRealUnit(unit)
 
   if unitdata[unit] and unitdata[unit] == 1 then
     return 1

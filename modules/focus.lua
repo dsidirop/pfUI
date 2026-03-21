@@ -134,11 +134,11 @@ local function ProperFocusCast(properCastSpell, msg)
 
   -- for lua functions with guid: short target swap via guid
   if hasGUID and func then
-    local _, currentGUID = UnitExists("target")
+    local currentGUID = GetUnitGUID("target")
     local isPlayer = UnitIsUnit("target", "player")
 
     TargetUnit(focusGUID)
-    local _, newGUID = UnitExists("target")
+    local newGUID = GetUnitGUID("target")
 
     if newGUID ~= focusGUID then -- could not target focus, restore and fail
       if currentGUID and currentGUID ~= "0x0000000000000000" then

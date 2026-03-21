@@ -1064,12 +1064,13 @@ function pfUI.api.rgbhex(r, g, b, a)
     end
 
     if _r and _g and _b and _a then
-        -- limit values to 0-1
-        _r = _r + 0 > 1 and 1 or _r + 0
-        _g = _g + 0 > 1 and 1 or _g + 0
-        _b = _b + 0 > 1 and 1 or _b + 0
-        _a = _a + 0 > 1 and 1 or _a + 0
-        return string.format("|c%02x%02x%02x%02x", _a * 255, _r * 255, _g * 255, _b * 255)
+        -- clamp to [0, 1] otherwise we will get invalid color codes
+        _r = _r + 0 > 1 and 1 or (_r + 0 > 0 and _r + 0 or 0)
+        _g = _g + 0 > 1 and 1 or (_g + 0 > 0 and _g + 0 or 0)
+        _b = _b + 0 > 1 and 1 or (_b + 0 > 0 and _b + 0 or 0)
+        _a = _a + 0 > 1 and 1 or (_a + 0 > 0 and _a + 0 or 0)
+
+        return string.format("|c%02x%02x%02x%02x", _a*255, _r*255, _g*255, _b*255)
     end
 
     return ""

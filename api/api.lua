@@ -1469,34 +1469,37 @@ end
 -- return r,g,b and hexcolor
 local gradientcolors = {}
 function pfUI.api.GetColorGradient(perc)
-    if not perc or perc ~= perc then perc = 0 end -- NaN guard: NaN ~= NaN is true in Luaperc = perc > 1 and 1 or perc
-    perc = perc < 0 and 0 or perc
-    perc = floor(perc * 100) / 100
+    local p = tonumber(perc) or 0 -- normalize once
+    
+    if p ~= p then p = 0 end -- NaN guard
+  
+    p = p < 0 and 0 or (p > 1 and 1 or p)
 
-    local index = perc
+    local index = floor(p * 100 + 0.5) / 10 -- keep cache granularity to 0.1
     if not gradientcolors[index] then
-        local r1, g1, b1, r2, g2, b2
+      local r, g, b, t
 
-        if perc <= 0.5 then
-            perc = perc * 2
-            r1, g1, b1 = 1, 0, 0
-            r2, g2, b2 = 1, 1, 0
-        else
-            perc = perc * 2 - 1
-            r1, g1, b1 = 1, 1, 0
-            r2, g2, b2 = 0, 1, 0
-        end
+      if p <= 0.5 then
+        -- red -> yellow
+        t = p / 0.5
+        r, g, b = 1, t, 0
+      else
+        -- yellow -> green
+        t = (p - 0.5) / 0.5
+        r, g, b = 1 - t, 1, 0
+      end
 
-        local r = round(r1 + (r2 - r1) * perc, 4)
-        local g = round(g1 + (g2 - g1) * perc, 4)
-        local b = round(b1 + (b2 - b1) * perc, 4)
-        local h = pfUI.api.rgbhex(r, g, b)
+      -- hard clamp channels to avoid invalid hex input
+      r = r < 0 and 0 or (r > 1 and 1 or r)
+      g = g < 0 and 0 or (g > 1 and 1 or g)
+      b = b < 0 and 0 or (b > 1 and 1 or b)
 
-        gradientcolors[index] = {}
-        gradientcolors[index].r = r
-        gradientcolors[index].g = g
-        gradientcolors[index].b = b
-        gradientcolors[index].h = h
+      gradientcolors[index] = {
+        r = r,
+        g = g,
+        b = b,
+        h = pfUI.api.rgbhex(r, g, b),
+      }
     end
 
     return gradientcolors[index].r,
@@ -1518,7 +1521,7 @@ function pfUI.api.GetNoNameObject(frame, objtype, layer, arg1, arg2)
 
     local objects
     if not frame or not frame.GetRegions then return end
-  if objtype == "Texture" or objtype == "FontString" then
+    if objtype == "Texture" or objtype == "FontString" then
         objects = { frame:GetRegions() }
     else
         objects = { frame:GetChildren() }

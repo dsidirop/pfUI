@@ -2,41 +2,71 @@
 if not TargetHPText or not TargetHPPercText then return end
 
 pfUI:RegisterModule("turtle-wow", "vanilla", function ()
-  -- Turtle WoW's new RaidFrame.lua uses GROUP_REPLACE_PARTY to decide whether to
-  -- call ShowPartyFrame(). Since pfUI replaces party frames, always set this so
-  -- RaidOptionsFrame_UpdatePartyFrames never tries to restore the Blizzard frames.
-  if C.unitframes.disable ~= "1" then
-    GROUP_REPLACE_PARTY = "1"
-  end
+  -- Manage Turtle WoW's GroupUI (Turtle_GroupUI addon) vs pfUI frames.
+  --
+  -- Turtle uses GroupClusterFrame1-8 for BOTH party AND raid display,
+  -- and GroupPetsClusterFrame for pets only. GroupFrame_Toggle() controls
+  -- the entire system via the GROUP_ENABLED global.
+  --
+  -- Logic:
+  --   pfUI UF disabled (disable=="1")  -> don't touch Turtle at all
+  --   In party (no raid):
+  --     pfUI group visible=="1"        -> disable Turtle GroupUI, pfUI handles party
+  --     pfUI group visible=="0"        -> enable Turtle GroupUI for party
+  --   In raid:
+  --     pfUI raid visible=="1"         -> disable Turtle GroupUI, pfUI handles raid
+  --     pfUI raid visible=="0"         -> enable Turtle GroupUI for raid
 
-  -- hide Turtle WoW's new compact GroupFrame (GroupClusterFrame1-8) when pfUI
-  -- unitframes are active, since pfUI has its own party/raid frames
-  if C.unitframes.disable ~= "1" then
-    HookAddonOrVariable("GroupFrame", function()
-      local function HideGroupFrames()
-        if GroupFrame then
-          GroupFrame:Hide()
-          GroupFrame.Show = function() return end
-        end
-        for i = 1, 8 do
-          local f = _G["GroupClusterFrame"..i]
-          if f then
-            f:Hide()
-            f.Show = function() return end
+  if C.unitframes.disable == "1" then
+    -- pfUI unit frames are completely off, let Turtle handle everything
+  else
+    -- Set GROUP_REPLACE_PARTY early so Turtle's own init can use it
+    GROUP_REPLACE_PARTY = "1"
+
+    -- Hide Turtle GroupUI frames and disable mouse when pfUI handles group/raid.
+    -- When pfUI does NOT handle them, we simply don't interfere - Turtle manages itself.
+    -- Important: Do NOT unregister events - Turtle needs RAID_ROSTER_UPDATE etc.
+    -- to react when group converts to raid (and vice versa).
+    local function DisableTurtleGroupFrames()
+      for i = 1, 8 do
+        local f = _G["GroupClusterFrame"..i]
+        if f then
+          f:Hide()
+          f:EnableMouse(false)
+          for _, child in pairs({f:GetChildren()}) do
+            child:EnableMouse(false)
           end
         end
-        if GroupPetsClusterFrame then
-          GroupPetsClusterFrame:Hide()
-          GroupPetsClusterFrame.Show = function() return end
+      end
+      if GroupPetsClusterFrame then
+        GroupPetsClusterFrame:Hide()
+        GroupPetsClusterFrame:EnableMouse(false)
+      end
+    end
+
+    -- Check if pfUI is handling group or raid for the current situation
+    local function pfUIHandlesGroupOrRaid()
+      if GetNumRaidMembers() > 0 then
+        return C.unitframes.raid and C.unitframes.raid.visible == "1"
+      else
+        return C.unitframes.group and C.unitframes.group.visible == "1"
+      end
+    end
+
+    HookAddonOrVariable("GroupFrame", function()
+      -- After Turtle's own init, hide frames if pfUI handles them
+      hooksecurefunc("GroupFrame_Toggle", function()
+        if pfUIHandlesGroupOrRaid() then
+          DisableTurtleGroupFrames()
         end
-      end
+      end)
 
-      HideGroupFrames()
-
-      -- GroupFrame_Update shows the cluster frames on every raid/party update
-      if GroupFrame_Update then
-        hooksecurefunc("GroupFrame_Update", HideGroupFrames)
-      end
+      -- After every group/raid update, re-hide if pfUI handles them
+      hooksecurefunc("GroupFrame_Update", function()
+        if pfUIHandlesGroupOrRaid() then
+          DisableTurtleGroupFrames()
+        end
+      end)
     end)
   end
 

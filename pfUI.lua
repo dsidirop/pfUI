@@ -186,6 +186,11 @@ function pfUI:UpdateFonts()
   NAMEPLATE_FONT     = default
   UNIT_NAME_FONT     = unit_name
 
+  -- If the Invisible font is selected, suppress all combat text entirely
+  if string.find(combat or "", "AdobeBlank") then
+    SHOW_COMBAT_TEXT = "0"
+  end
+
   -- set dropdown font to default size
   UIDROPDOWNMENU_DEFAULT_TEXT_HEIGHT = 11
 
@@ -246,6 +251,69 @@ function pfUI:GetEnvironment()
   pfUI.env.L = (pfUI_locale[GetLocale()] or pfUI_locale["enUS"])
 
   return pfUI.env
+end
+
+-- [ New Module Registry ]
+-- Tracks modules introduced after initial release so existing users get
+-- a one-time prompt asking if they want to enable them.
+pfUI.new_modules = {}
+
+function pfUI:RegisterNewModule(name, label)
+  table.insert(pfUI.new_modules, { name = name, label = label })
+end
+
+function pfUI:CheckNewModules()
+  pfUI_init.seen_modules = pfUI_init.seen_modules or {}
+
+  local pending = 0
+  for _, entry in pairs(pfUI.new_modules) do
+    if not pfUI_init.seen_modules[entry.name] and pfUI_init["finalize"] then
+      pending = pending + 1
+    end
+  end
+
+  if pending == 0 then return end
+
+  local remaining = pending
+  local needsReload = false
+
+  local function onAnswer()
+    remaining = remaining - 1
+    if remaining <= 0 and needsReload then
+      ReloadUI()
+    end
+  end
+
+  for _, entry in pairs(pfUI.new_modules) do
+    local name = entry.name
+    if not pfUI_init.seen_modules[name] then
+      pfUI_init.seen_modules[name] = true
+
+      -- Only prompt existing users (firstrun wizard already ran)
+      if pfUI_init["finalize"] then
+        StaticPopupDialogs["PFUI_NEW_MODULE_" .. strupper(name)] = {
+          text = "|cff33ffccpfUI|r: New module available!\n\n|cffffffffDo you want to enable |cff33ffcc" .. (entry.label or name) .. "|r|cffffffff?\n\nYou can always change this later in the pfUI settings.|r",
+          button1 = "Yes",
+          button2 = "No",
+          OnAccept = function()
+            pfUI_config["disabled"] = pfUI_config["disabled"] or {}
+            pfUI_config["disabled"][name] = nil
+            onAnswer()
+          end,
+          OnCancel = function()
+            pfUI_config["disabled"] = pfUI_config["disabled"] or {}
+            pfUI_config["disabled"][name] = "1"
+            needsReload = true
+            onAnswer()
+          end,
+          timeout = 0,
+          whileDead = true,
+          hideOnEscape = false,
+        }
+        StaticPopup_Show("PFUI_NEW_MODULE_" .. strupper(name))
+      end
+    end
+  end
 end
 
 function pfUI:RegisterModule(name, a2, a3)
@@ -331,6 +399,9 @@ pfUI:SetScript("OnEvent", function()
     end
 
     pfUI.bootup = nil
+
+    -- Prompt existing users about newly introduced modules
+    pfUI:CheckNewModules()
   end
 end)
 
@@ -405,19 +476,25 @@ function pfUI.SetupCVars()
   NAMEPLATES_ON = "1"
   SIMPLE_CHAT = "0"
 
-  SHOW_COMBAT_TEXT = "1"
-  COMBAT_TEXT_SHOW_LOW_HEALTH_MANA = "1"
-  COMBAT_TEXT_SHOW_AURAS = "1"
-  COMBAT_TEXT_SHOW_AURA_FADE = "1"
-  COMBAT_TEXT_SHOW_COMBAT_STATE = "1"
-  COMBAT_TEXT_SHOW_DODGE_PARRY_MISS = "1"
-  COMBAT_TEXT_SHOW_RESISTANCES = "1"
-  COMBAT_TEXT_SHOW_REPUTATION = "1"
-  COMBAT_TEXT_SHOW_REACTIVES = "1"
-  COMBAT_TEXT_SHOW_FRIENDLY_NAMES = "1"
-  COMBAT_TEXT_SHOW_COMBO_POINTS = "1"
-  COMBAT_TEXT_SHOW_MANA = "1"
-  COMBAT_TEXT_FLOAT_MODE = "1"
-  COMBAT_TEXT_SHOW_HONOR_GAINED = "1"
+  -- Only force combat text CVars when not using the Invisible font.
+  -- If AdobeBlank is selected, the player wants no combat text -- respect that.
+  local isInvisible = pfUI_config.global.font_combat and
+    string.find(pfUI_config.global.font_combat, "AdobeBlank")
+  if not isInvisible then
+    SHOW_COMBAT_TEXT = "1"
+    COMBAT_TEXT_SHOW_LOW_HEALTH_MANA = "1"
+    COMBAT_TEXT_SHOW_AURAS = "1"
+    COMBAT_TEXT_SHOW_AURA_FADE = "1"
+    COMBAT_TEXT_SHOW_COMBAT_STATE = "1"
+    COMBAT_TEXT_SHOW_DODGE_PARRY_MISS = "1"
+    COMBAT_TEXT_SHOW_RESISTANCES = "1"
+    COMBAT_TEXT_SHOW_REPUTATION = "1"
+    COMBAT_TEXT_SHOW_REACTIVES = "1"
+    COMBAT_TEXT_SHOW_FRIENDLY_NAMES = "1"
+    COMBAT_TEXT_SHOW_COMBO_POINTS = "1"
+    COMBAT_TEXT_SHOW_MANA = "1"
+    COMBAT_TEXT_FLOAT_MODE = "1"
+    COMBAT_TEXT_SHOW_HONOR_GAINED = "1"
+  end
   UIParentLoadAddOn("Blizzard_CombatText")
 end

@@ -2081,6 +2081,7 @@ pfUI:RegisterModule("gui", "vanilla:tbc", function ()
       CreateConfig(nil, T["Enable Energy Ticks"], C.unitframes.player, "energy", "checkbox")
       CreateConfig(nil, T["Enable Mana Ticks"], C.unitframes.player, "manatick", "checkbox")
       CreateConfig(nil, T["Detect Enemy Buffs"], C.unitframes, "buffdetect", "checkbox", nil, nil, nil, nil, "vanilla" )
+      CreateConfig(nil, T["Raid Mark Icon Style"], C.unitframes, "blizzard_raidicons", "dropdown", function() return {"1:Original Blizzard", "0:pfUI Design"} end)
 
       CreateConfig(nil, T["Swing Timer"], nil, nil, "header")
       CreateConfig(nil, T["Swing Timer Width"], C.unitframes, "swingtimerwidth")
@@ -2345,7 +2346,6 @@ pfUI:RegisterModule("gui", "vanilla:tbc", function ()
         CreateConfig(U[c], T["Debuffs Per Row"], C.unitframes[c], "debuffperrow")
 
         if c ~= "player" then
-          CreateConfig(U[c], T["Only Show Own Debuffs (|cffffaaaaExperimental|r)"], C.unitframes[c], "selfdebuff", "checkbox")
         end
 
         CreateConfig(U[c], T["Combat/Aggro Indicators"], nil, nil, "header")
@@ -2530,7 +2530,7 @@ pfUI:RegisterModule("gui", "vanilla:tbc", function ()
       CreateConfig(nil, T["Color Debuff Stacks"], C.buffbar.tdebuff, "colorstacks", "checkbox")
       CreateConfig(nil, T["Buffbar Width"], C.buffbar.tdebuff, "width")
       CreateConfig(nil, T["Buffbar Height"], C.buffbar.tdebuff, "height")
-      CreateConfig(nil, T["Only Show Own Debuffs (|cffffaaaaExperimental|r)"], C.buffbar.tdebuff, "selfdebuff", "checkbox")
+      CreateConfig(nil, T["Show Only Own Debuffs"], C.buffbar.tdebuff, "selfdebuff", "checkbox")
       CreateConfig(nil, T["Filter Mode"], C.buffbar.tdebuff, "filter", "dropdown", pfUI.gui.dropdowns.buffbarfilter)
       CreateConfig(nil, T["Time Threshold"], C.buffbar.tdebuff, "threshold")
       CreateConfig(nil, T["Whitelist"], C.buffbar.tdebuff, "whitelist", "list")
@@ -2614,6 +2614,21 @@ pfUI:RegisterModule("gui", "vanilla:tbc", function ()
       local formfactors = function()
         return BarLayoutOptions(tonumber(C.bars["bar"..id].buttons) or id < 11 and NUM_ACTIONBAR_BUTTONS or id > 11 and NUM_SHAPESHIFT_SLOTS or NUM_PET_ACTION_SLOTS)
       end
+      local uneven_options = function()
+        local formfactor = tostring(C.bars["bar"..id].formfactor or "")
+        local _, _, cols, rows = string.find(formfactor, "(%d+)%s*x%s*(%d+)")
+        cols, rows = tonumber(cols), tonumber(rows)
+
+        if cols == 3 and rows == 3 then
+          return { "Up", "Down", "Left", "Right" }
+        elseif cols and cols <= 3 then
+          return { "Up", "Down" }
+        elseif rows and rows <= 3 then
+          return { "Left", "Right" }
+        end
+
+        return { "Up", "Down", "Left", "Right" }
+      end
 
       CreateGUIEntry(T["Actionbar"], caption, function()
         CreateConfig(U["bars"], T["Enable"], C.bars["bar"..id], "enable", "checkbox")
@@ -2631,7 +2646,27 @@ pfUI:RegisterModule("gui", "vanilla:tbc", function ()
 
         CreateConfig(U["bars"], T["Icon Size"], C.bars["bar"..id], "icon_size")
         CreateConfig(U["bars"], T["Spacing"], C.bars["bar"..id], "spacing", "dropdown", pfUI.gui.dropdowns.actionbarbuttons)
-        CreateConfig(U["bars"], T["Layout"], C.bars["bar"..id], "formfactor", "dropdown", formfactors)
+        local uneven_frame = nil
+        local layout_ufunc = function()
+          local formfactor = tostring(C.bars["bar"..id].formfactor or "")
+          local _, _, cols, rows = string.find(formfactor, "(%d+)%s*x%s*(%d+)")
+          cols, rows = tonumber(cols), tonumber(rows)
+          local is_square = cols == 3 and rows == 3
+          local is_vertical = cols and cols <= 3 and not is_square
+          local is_horizontal = rows and rows <= 3 and not is_square
+          local uneven = C.bars["bar"..id].uneven
+          if is_vertical then
+            if uneven ~= "Up" and uneven ~= "Down" then C.bars["bar"..id].uneven = "Down" end
+          elseif is_horizontal then
+            if uneven ~= "Left" and uneven ~= "Right" then C.bars["bar"..id].uneven = "Left" end
+          end
+          if uneven_frame and uneven_frame.input and uneven_frame.input.UpdateMenu then
+            uneven_frame.input:UpdateMenu()
+          end
+          if U["bars"] then U["bars"]() end
+        end
+        CreateConfig(layout_ufunc, T["Layout"], C.bars["bar"..id], "formfactor", "dropdown", formfactors)
+        uneven_frame = CreateConfig(U["bars"], T["Layout Uneven Orientation"], C.bars["bar"..id], "uneven", "dropdown", uneven_options)
         CreateConfig(U["bars"], T["Bar Background"], C.bars["bar"..id], "background", "checkbox")
         CreateConfig(U["bars"], T["Show Hotkey Text"], C.bars["bar"..id], "showkeybind", "checkbox")
 
@@ -2875,7 +2910,6 @@ pfUI:RegisterModule("gui", "vanilla:tbc", function ()
       CreateConfig(U["nameplates"], T["Show Timer Text"], C.nameplates, "debufftext", "checkbox")
       CreateConfig(Reload, T["Show Timer Animation"], C.nameplates, "debuffanim", "checkbox")
 
-      CreateConfig(U["nameplates"], T["Only Show Own Debuffs (|cffffaaaaExperimental|r)"], C.nameplates, "selfdebuff", "checkbox")
       CreateConfig(U["nameplates"], T["Filter Mode"], C.nameplates.debuffs, "filter", "dropdown", pfUI.gui.dropdowns.buffbarfilter)
       CreateConfig(U["nameplates"], T["Blacklist"], C.nameplates.debuffs, "blacklist", "list")
       CreateConfig(U["nameplates"], T["Whitelist"], C.nameplates.debuffs, "whitelist", "list")

@@ -1116,7 +1116,7 @@ function pfUI.api.GetPerfectPixel()
     end
 
     if pfUI_config.appearance.border.pixelperfect == "1" then
-        local scale = GetCVar("uiScale")
+        local scale = GetCVar("useUiScale") == "1" and GetCVar("uiScale") or "1"
         local resolution = GetCVar("gxResolution")
         local _, _, screenwidth, screenheight = strfind(resolution, "(.+)x(.+)")
 
@@ -1302,7 +1302,9 @@ end
 function pfUI.api.BarLayoutSize(bar, barsize, formfactor, iconsize, bordersize, padding)
     assert(barsize > 0 and barsize <= NUM_ACTIONBAR_BUTTONS, "BarLayoutSize: barsize " .. tostring(barsize) .. " is invalid")
     local formfactor = pfUI.api.BarLayoutFormfactor(formfactor)
-    local cols, rows = unpack(pfGridmath[barsize][formfactor])
+    local layout = pfGridmath[barsize] and pfGridmath[barsize][formfactor or 1]
+  if not layout then layout = pfGridmath[barsize] and pfGridmath[barsize][1] or {1,1} end
+  local cols, rows = unpack(layout)
     local width = (iconsize + bordersize * 2 + padding) * cols + padding
     local height = (iconsize + bordersize * 2 + padding) * rows + padding
     bar._size = { width, height }
@@ -1321,7 +1323,9 @@ function pfUI.api.BarButtonAnchor(button, basename, buttonindex, barsize, formfa
     assert(barsize > 0 and barsize <= NUM_ACTIONBAR_BUTTONS, "BarButtonAnchor: barsize " .. tostring(barsize) .. " is invalid")
     local formfactor = pfUI.api.BarLayoutFormfactor(formfactor)
     local parent = button:GetParent()
-    local cols, rows = unpack(pfGridmath[barsize][formfactor])
+    local layout = pfGridmath[barsize] and pfGridmath[barsize][formfactor or 1]
+  if not layout then layout = pfGridmath[barsize] and pfGridmath[barsize][1] or {1,1} end
+  local cols, rows = unpack(layout)
     if buttonindex == 1 then
         button._anchor = { "TOPLEFT", parent, "TOPLEFT", bordersize + padding, -bordersize - padding }
     else

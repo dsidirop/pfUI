@@ -1158,6 +1158,7 @@ if hasNampower then
   frame:RegisterEvent("PLAYER_ENTERING_WORLD")
   frame:RegisterEvent("PLAYER_TALENT_UPDATE")
   frame:RegisterEvent("PLAYER_LOGOUT")
+  frame:RegisterEvent("SPELLCAST_CHANNEL_STOP")
   frame:RegisterEvent("SPELL_START_SELF")
   frame:RegisterEvent("SPELL_START_OTHER")
   frame:RegisterEvent("SPELL_GO_SELF")
@@ -1178,6 +1179,26 @@ if hasNampower then
       this:SetScript("OnEvent", nil)
       return
       
+    elseif event == "SPELLCAST_CHANNEL_STOP" then
+      -- Channel interrupted by player - clear ownDebuffs for the channeled spell immediately.
+      -- DEBUFF_REMOVED fires later (0.5-1s server lag), causing phantom debuff display.
+      -- We look up the active channel cast and pre-clear ownDebuffs for its target.
+      local myGuid = GetPlayerGUID()
+      local castData = myGuid and pfUI.libdebuff_casts[myGuid]
+      if castData and castData.event == "CHANNEL" and castData.spellName then
+        local spellName = castData.spellName
+        local targetGuid = GetUnitGUID and GetUnitGUID("target")
+        if targetGuid and ownDebuffs[targetGuid] and ownDebuffs[targetGuid][spellName] then
+          local data = ownDebuffs[targetGuid][spellName]
+          -- Only clear if the timer is still active (not already expired naturally)
+          local remaining = (data.startTime + data.duration) - GetTime()
+          if remaining > 0 then
+            ownDebuffs[targetGuid][spellName] = nil
+          end
+        end
+        pfUI.libdebuff_casts[myGuid] = nil
+      end
+
     elseif event == "PLAYER_ENTERING_WORLD" then
       GetPlayerGUID()
       UpdateCarnageRank()
@@ -1352,9 +1373,13 @@ if hasNampower then
 
     elseif event == "SPELL_FAILED_OTHER" then
       local casterGuid = arg1
-      
+      local spellId = arg2
+
       if casterGuid and pfUI.libdebuff_casts[casterGuid] then
-        pfUI.libdebuff_casts[casterGuid] = nil
+        -- Only clear if spellID matches to avoid clearing a cast that already moved on
+        if pfUI.libdebuff_casts[casterGuid].spellID == spellId then
+          pfUI.libdebuff_casts[casterGuid] = nil
+        end
       end
       if pfUI.libdebuff_spell_failed_other_hooks then
         for _, fn in pairs(pfUI.libdebuff_spell_failed_other_hooks) do
@@ -1576,6 +1601,7 @@ if hasNampower then
           DEFAULT_CHAT_FRAME:AddMessage(string.format("%s |cff00ffff[AURA_CAST]|r %s target=%s caster=%s isOurs=%s dur=%.1fs", 
             GetDebugTimestamp(), spellName, DebugGuid(targetGuid), DebugGuid(casterGuid), tostring(isOurs), duration))
         end
+
       end
       
       -- Notify nameplates
@@ -1608,13 +1634,12 @@ if hasNampower then
       -- Get texture
       local texture = libdebuff:GetSpellIcon(spellId)
       
-      -- Store in ownDebuffs
+      -- Store in ownDebuffs only if entry already exists (confirmed hit via DEBUFF_ADDED).
+      -- AURA_CAST fires on both hit AND miss - creating a new entry here would show
+      -- phantom debuffs when the cast misses or is interrupted before hitting.
+      if not ownDebuffs[targetGuid] or not ownDebuffs[targetGuid][spellName] then return end
+
       ownDebuffs[targetGuid] = ownDebuffs[targetGuid] or {}
-      
-      if not ownDebuffs[targetGuid][spellName] then
-        ownDebuffs[targetGuid][spellName] = {}
-      end
-      
       local data = ownDebuffs[targetGuid][spellName]
       if not data then return end  -- race condition: cleared by DEBUFF_REMOVED between init and use
       

@@ -113,6 +113,7 @@ pfUI:RegisterModule("castbar", "vanilla", function ()
         local guid = GetUnitGUID(this.unitstr)
         if guid then focusGuid = guid end
       end
+      this.focusGuid = focusGuid
 
       -- Try libdebuff_casts first for GUID-based units (works with Turtle GUID + Nampower events)
       local cast, nameSubtext, text, texture, startTime, endTime
@@ -172,7 +173,6 @@ pfUI:RegisterModule("castbar", "vanilla", function ()
 
         if this.endTime ~= endTime then
           this.bar:SetStatusBarColor(strsplit(",", C.appearance.castbar[(channel and "channelcolor" or "castbarcolor")]))
-          this.bar:SetMinMaxValues(0, duration / 1000)
           this.bar.left:SetText(spellname .. rank)
           this.fadeout = nil
           this.endTime = endTime
@@ -226,6 +226,12 @@ pfUI:RegisterModule("castbar", "vanilla", function ()
           end
         end
 
+        local newMax = duration / 1000
+        if this.lastMax ~= newMax then
+          this.bar:SetMinMaxValues(0, newMax)
+          this.lastMax = newMax
+        end
+
         if channel then
           cur = max + startTime/1000 - now
         end
@@ -248,6 +254,7 @@ pfUI:RegisterModule("castbar", "vanilla", function ()
       else
         this.bar:SetMinMaxValues(1,100)
         this.bar:SetValue(100)
+        this.lastMax = nil
         this.fadeout = 1
         this.delay = 0
         this.itemIconApplied = nil
@@ -255,26 +262,54 @@ pfUI:RegisterModule("castbar", "vanilla", function ()
     end)
 
     -- register for spell delay
+    -- Prefer Nampower's SPELL_DELAYED_SELF (gives casterGuid + delayMs directly).
+    -- Fall back to vanilla SPELLCAST_DELAYED if Nampower is not available.
     local playerarg = nil
+    local function ApplyPushback(delayMs)
+      if not delayMs or delayMs <= 0 or not this.endTime then return end
+      this.delay = (this.delay or 0) + delayMs / 1000
+      this.endTime = this.endTime + delayMs
+      local focusGuid = this.focusGuid
+      if focusGuid and pfUI.libdebuff_casts and pfUI.libdebuff_casts[focusGuid] then
+        pfUI.libdebuff_casts[focusGuid].endTime = this.endTime / 1000
+      end
+    end
+
+    cb:RegisterEvent("SPELL_DELAYED_SELF")
     cb:RegisterEvent(CASTBAR_EVENT_CAST_DELAY)
     cb:RegisterEvent(CASTBAR_EVENT_CHANNEL_DELAY)
     cb:RegisterEvent(CASTBAR_EVENT_CAST_START)
     cb:RegisterEvent(CASTBAR_EVENT_CHANNEL_START)
     cb:SetScript("OnEvent", function()
       if this.unitstr and not UnitIsUnit(this.unitstr, "player") then return end
-      playerarg = pfUI.client <= 11200 or arg1 == "player" and true or nil
 
-      if event == CASTBAR_EVENT_CAST_DELAY and playerarg then
-        local isCast, nameSubtext, text, texture, startTime, endTime, isTradeSkill = pfGetCastInfo(this.unitstr or this.unitname)
-        if not isCast then return end
-        if not this.endTime then return end
-        this.delay = this.delay + (endTime - this.endTime) / 1000
-      elseif event == CASTBAR_EVENT_CHANNEL_DELAY and playerarg then
-        local isChannel, _, _, _, startTime, endTime = pfGetChannelInfo(this.unitstr or this.unitname)
-        if not isChannel then return end
-        this.delay = ( this.delay or 0 ) + this.bar:GetValue() - (endTime/1000 - GetTime())
-      elseif playerarg then
-        this.delay = 0
+      if event == "SPELL_DELAYED_SELF" then
+        -- arg1=casterGuid, arg2=delayMs (Nampower, most accurate)
+        ApplyPushback(arg2)
+
+      elseif event == CASTBAR_EVENT_CAST_DELAY then
+        -- SPELLCAST_DELAYED fallback intentionally removed - addon requires Nampower.
+        -- Cast pushback is handled by SPELL_DELAYED_SELF above.
+        return
+
+      elseif event == CASTBAR_EVENT_CHANNEL_DELAY then
+        -- SPELLCAST_CHANNEL_UPDATE fires when a channel is pushed back by damage.
+        -- arg1 = new remaining time in ms. Channel ends sooner = newEndTime < this.endTime.
+        if not this.endTime or not arg1 then return end
+        local newEndTime = GetTime() * 1000 + arg1
+        local diff = this.endTime - newEndTime  -- positive = time lost to pushback
+        if diff > 50 then
+          this.delay = (this.delay or 0) + diff / 1000
+          this.endTime = newEndTime
+          local focusGuid = this.focusGuid
+          if focusGuid and pfUI.libdebuff_casts and pfUI.libdebuff_casts[focusGuid] then
+            pfUI.libdebuff_casts[focusGuid].endTime = newEndTime / 1000
+          end
+        end
+
+      elseif event == CASTBAR_EVENT_CAST_START or event == CASTBAR_EVENT_CHANNEL_START then
+        playerarg = pfUI.client <= 11200 or arg1 == "player" and true or nil
+        if playerarg then this.delay = 0 end
       end
     end)
 

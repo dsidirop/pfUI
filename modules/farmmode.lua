@@ -1,9 +1,22 @@
 pfUI:RegisterModule("farmmode", "vanilla:tbc", function ()
-  local function ToggleFarmMode()
-    if pfUI.farmmap:IsShown() then
-      pfUI.farmmap:Hide()
+  local function ToggleFarmMode(onOrOff)
+    if onOrOff == nil then
+      onOrOff = not pfUI.farmmap:IsShown()
     else
+      onOrOff = (type(onOrOff) == "string"
+          and (
+              onOrOff == "on"
+                  or onOrOff == "1"
+                  or onOrOff == "true"
+          ))
+          or (type(onOrOff) == "number" and onOrOff > 0)  
+          or (type(onOrOff) == "boolean" and onOrOff)
+    end
+    
+    if onOrOff then
       pfUI.farmmap:Show()
+    else
+      pfUI.farmmap:Hide()
     end
   end
 
@@ -11,7 +24,7 @@ pfUI:RegisterModule("farmmode", "vanilla:tbc", function ()
     -- pfMap entries (pfQuest / pfDB)
     if pfMap and pfMap.drawlayer then
       pfMap.drawlayer = layer
-      for id, pin in pairs(pfMap.mpins) do
+      for _, pin in pairs(pfMap.mpins) do
         pin:SetParent(layer)
       end
       pfMap:UpdateMinimap()
@@ -116,7 +129,9 @@ pfUI:RegisterModule("farmmode", "vanilla:tbc", function ()
 
     -- save old minimap height
     if pfUI.minimap then
-      pfUI.minimap:SetHeight(this.mmoldsize)
+      if this.mmoldsize then
+        pfUI.minimap:SetHeight(this.mmoldsize)
+      end
       pfUI.minimap:SetAlpha(1)
       pfUI.farmmap.button:Hide()
     end

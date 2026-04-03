@@ -43,8 +43,8 @@ function pfUI.api.GetUnitDistance(unit1, unit2)
 
   -- Try UnitXP first (most accurate)
   if pfUI.api.HasUnitXP() then
-    local success, distance = pcall(UnitXP, "distanceBetween", unit1, unit2)
-    if success and distance then return distance end
+    local distance = PfuiUnitXPDistanceBetween(unit1, unit2)
+    if distance ~= nil then return distance end
   end
 
   -- Try SuperWoW UnitPosition
@@ -136,6 +136,13 @@ function pfUI.api.checkversion(chkmajor, chkminor, chkfix)
     return curversion <= chkversion and true or nil
 end
 
+function PfuiUnitXPDistanceBetween(unit1, unit2, optionalMode)
+  return UnitXP("distanceBetween", unit1, unit2, optionalMode)
+end
+
+local UnitFramesRangeCheckMode
+local UnitFramesRangeCheckDistance
+
 -- [ UnitInRange ]
 -- Returns whether a party/raid member is nearby.
 -- It takes care of the rangecheck module if existing.
@@ -146,19 +153,23 @@ function pfUI.api.UnitInRange(unit)
     return nil
   end
 
-  if CheckInteractDistance(unit, 4) then
+  if CheckInteractDistance(unit, 4) then -- 4=follow which is 28 yards   this also tackles the player == unit guard-close
     return 1
   end
 
   -- UnitXP precise mode: skip librange entirely, use direct distance check
-  if _G.UnitXP and C.unitframes.rangecheck_mode == "unitxp" then
-    local success, distance = pcall(_G.UnitXP, "distanceBetween", "player", unit)
-    if success and distance then
-      return distance <= (tonumber(C.unitframes.rangecheck_distance) or 40)
-          and 1
-          or nil
-    end
-    -- fallthrough to librange if UnitXP fails
+  if _G.UnitXP then
+    UnitFramesRangeCheckMode = UnitFramesRangeCheckMode or C.unitframes.rangecheck_mode
+    if UnitFramesRangeCheckMode == "unitxp" then
+      local distance = PfuiUnitXPDistanceBetween("player", unit)
+      if distance ~= nil then
+        UnitFramesRangeCheckDistance = UnitFramesRangeCheckDistance or tonumber(C.unitframes.rangecheck_distance) or 40
+        return distance <= UnitFramesRangeCheckDistance
+            and 1
+            or nil
+      end
+      -- fallthrough to librange if UnitXP fails
+    end  
   end
 
   if pfUI.api.librange then

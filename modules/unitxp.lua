@@ -119,8 +119,8 @@ pfUI:RegisterModule("unitxp", "vanilla", function ()
             return
           end
 
-          local success, distance = pcall(UnitXP, "distanceBetween", "player", "target")
-          if not success or not distance then
+          local distance = PfuiUnitXPDistanceBetween("player", "target")
+          if not distance then -- zero or nil
             this.text:Hide()
             return
           end
@@ -183,8 +183,8 @@ pfUI:RegisterModule("unitxp", "vanilla", function ()
 
             f:Show()
 
-            local success, distance = pcall(UnitXP, "distanceBetween", "player", "target")
-            if not success or not distance then
+            local distance = PfuiUnitXPDistanceBetween("player", "target")
+            if not distance then
               f.text:SetText("--")
               f.text:SetTextColor(1, 1, 1, 1)
               return
@@ -282,16 +282,16 @@ pfUI:RegisterModule("unitxp", "vanilla", function ()
       unit2 = unit1
       unit1 = "player"
     end
-    local success, distance = pcall(UnitXP, "distanceBetween", unit1, unit2)
-    if success then return distance end
-    return nil
+
+    return PfuiUnitXPDistanceBetween(unit1, unit2)
   end
 
   pfUI.api.IsInMeleeRange = function(unit)
-    local success, distance = pcall(UnitXP, "distanceBetween", "player", unit, "meleeAutoAttack")
-    if success and distance then
+    local distance = PfuiUnitXPDistanceBetween("player", unit, "meleeAutoAttack")
+    if distance ~= nil then
       return distance <= 5
     end
+
     return nil
   end
 
@@ -300,9 +300,8 @@ pfUI:RegisterModule("unitxp", "vanilla", function ()
       unit2 = unit1
       unit1 = "player"
     end
-    local success, distance = pcall(UnitXP, "distanceBetween", unit1, unit2, "AoE")
-    if success then return distance end
-    return nil
+
+    return PfuiUnitXPDistanceBetween(unit1, unit2, "AoE")
   end
 
   -- Smart Targeting Helpers

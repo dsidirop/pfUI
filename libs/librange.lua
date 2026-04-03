@@ -171,10 +171,12 @@ librange:SetScript("OnEvent", function()
   end
 end)
 
-local _, class = UnitClass("player")
 local druid = class == "DRUID"
 local target_event = TargetFrame_OnEvent
 local target_nop = function() return end
+
+local UnitframesRangecheckDistance
+local UnitframesRangecheckDistancePlusThreshold
 
 librange:SetScript("OnUpdate", function()
   -- Prevent UnitXP calls during logout (crash prevention)
@@ -196,10 +198,12 @@ librange:SetScript("OnUpdate", function()
     if not UnitIsUnit("target", unit) then
       -- Try UnitXP_SP3 first (most accurate distance measurement)
       if hasUnitXP_SP3 then
-        local unitxp_distance = UnitXP("distanceBetween", "player", unit)
-        if unitxp_distance then
-          local threshold = (tonumber(C.unitframes.rangecheck_distance) or 40) + 5
-          unitdata[unit] = unitxp_distance < threshold and 1 or 0
+        local unitxp_distance = PfuiUnitXPDistanceBetween("player", unit)
+        if unitxp_distance ~= nil then
+          UnitframesRangecheckDistance = UnitframesRangecheckDistance or tonumber(C.unitframes.rangecheck_distance) or 40
+          UnitframesRangecheckDistancePlusThreshold = UnitframesRangecheckDistancePlusThreshold or UnitframesRangecheckDistance + 5
+
+          unitdata[unit] = unitxp_distance < UnitframesRangecheckDistancePlusThreshold and 1 or 0
           this.id = this.id + 1
           return
         end

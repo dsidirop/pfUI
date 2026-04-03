@@ -200,6 +200,11 @@ pfUI.libdebuff_unit_died_hooks = pfUI.libdebuff_unit_died_hooks or {}
 
 -- Callbacks fired after SPELL_CAST_EVENT is processed: fn(success, spellId, castType, targetGuid)
 pfUI.libdebuff_spell_cast_hooks = pfUI.libdebuff_spell_cast_hooks or {}
+
+-- Callbacks fired when a cast is identified as a downrank of an already active debuff.
+-- fn(spellName, castRank, activeRank, targetGuid, casterGuid)
+-- External addons can use this to avoid re-implementing downrank detection themselves.
+pfUI.libdebuff_downrank_blocked_hooks = pfUI.libdebuff_downrank_blocked_hooks or {}
 local AURA_CAST_DEDUPE_WINDOW = 0.1  -- Ignore duplicates within 100ms
 
 -- Captured combo points from SPELL_CAST_EVENT (before client consumes them)
@@ -1341,13 +1346,33 @@ if hasNampower then
         castRank = tonumber((string.gsub(spellRankString, "Rank ", ""))) or 0
       end
       
-      -- Store in pendingCasts for DEBUFF_ADDED correlation
+      -- Store in pendingCasts for DEBUFF_ADDED correlation.
+      -- If this cast is a downrank of an already active debuff, fire the downrank blocked hook
+      -- so external addons (e.g. SuperCleveRoidMacros) don't need to re-implement this check.
       if targetGuid then
         pendingCasts[targetGuid] = pendingCasts[targetGuid] or {}
+        local isDownrankBlocked = false
+        if castRank > 0 then
+          local existingOwn = ownDebuffs[targetGuid] and ownDebuffs[targetGuid][spellName]
+          if existingOwn and existingOwn.rank and existingOwn.rank > castRank then
+            local existingTimeleft = (existingOwn.startTime + existingOwn.duration) - GetTime()
+            if existingTimeleft > 0 then
+              isDownrankBlocked = true
+              -- Fire hook so external addons know this cast was downrank-blocked
+              if pfUI.libdebuff_downrank_blocked_hooks then
+                for _, fn in pairs(pfUI.libdebuff_downrank_blocked_hooks) do
+                  fn(spellName, castRank, existingOwn.rank, targetGuid, casterGuid)
+                end
+              end
+            end
+          end
+        end
+        -- Always write pendingCasts — let consumers use the hook to handle downrank themselves
         pendingCasts[targetGuid][spellName] = {
           casterGuid = casterGuid,
           rank = castRank,
-          time = GetTime()
+          time = GetTime(),
+          downrankBlocked = isDownrankBlocked
         }
       end
 
@@ -1686,14 +1711,24 @@ if hasNampower then
       -- Get texture
       local texture = libdebuff:GetSpellIcon(spellId)
       
-      -- Store in ownDebuffs only if entry already exists (confirmed hit via DEBUFF_ADDED).
-      -- AURA_CAST fires on both hit AND miss - creating a new entry here would show
-      -- phantom debuffs when the cast misses or is interrupted before hitting.
-      if not ownDebuffs[targetGuid] or not ownDebuffs[targetGuid][spellName] then return end
+      -- Write ownDebuffs if:
+      -- (a) Entry already exists (refresh of active debuff), OR
+      -- (b) pendingCasts has an entry for this spell (SPELL_GO confirmed a hit is in-flight,
+      --     not a miss). This allows the downrank hook in SPELL_GO to fire correctly on first cast.
+      -- Without (b), ownDebuffs is empty until DEBUFF_ADDED (~300ms later), meaning the downrank
+      -- check in SPELL_GO has no data to work with on the first cast.
+      local entryExists = ownDebuffs[targetGuid] and ownDebuffs[targetGuid][spellName]
+      local pendingConfirm = pendingCasts[targetGuid] and pendingCasts[targetGuid][spellName]
+      if not entryExists and not pendingConfirm then return end
 
       ownDebuffs[targetGuid] = ownDebuffs[targetGuid] or {}
       local data = ownDebuffs[targetGuid][spellName]
-      if not data then return end  -- race condition: cleared by DEBUFF_REMOVED between init and use
+      -- For first-cast path (pendingConfirm but no existing entry): create a new entry
+      if not data then
+        if not pendingConfirm then return end  -- race condition: cleared by DEBUFF_REMOVED
+        data = {}
+        ownDebuffs[targetGuid][spellName] = data
+      end
       
       -- Downrank Protection: Check if existing debuff is still active and has higher rank
       if data.startTime and data.duration and data.rank and rankNum > 0 then

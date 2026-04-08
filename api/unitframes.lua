@@ -3210,6 +3210,12 @@ function pfUI.uf:GetStatusValue(unit, pos)
     return unit:GetColor("health") .. pfUI.api.Abbreviate(rhpmax)
   elseif config == "healthperc" then
     return unit:GetColor("health") .. ceil(hp / hpmax * 100)
+  elseif config == "healthmaxperc" then
+    if hp ~= hpmax then
+      return unit:GetColor("health") .. pfUI.api.Abbreviate(rhpmax) .. " - " .. ceil(hp / hpmax * 100) .. "%"
+    else
+      return unit:GetColor("health") .. pfUI.api.Abbreviate(rhpmax)
+    end
   elseif config == "healthmiss" then
     local health = ceil(rhp - rhpmax)
     if UnitIsDead(unitstr) then
